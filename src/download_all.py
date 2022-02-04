@@ -9,7 +9,7 @@ import os
 
 path='../data/raw'
 if not os.path.exists(path):
-    os.makedirs()
+    os.makedirs(path)
     print('created data/raw folders')
 
 
