@@ -2,9 +2,7 @@
 <img src="https://mindkindgroup.com/wp-content/uploads/2021/05/logo-negro.svg" alt="Mindkind logo" width="700"/>
 
 # MedClip  
-
-
-This is the official repository for the official MedClip research project from [MindKind group](mindkindgroup.com)
+This is the official repository for the MedClip research project from [MindKind group](mindkindgroup.com)
 
 The project investigates and compares different pretraining tasks for medical image feature extraction and captioning for automated medical reports. 
 
@@ -15,8 +13,6 @@ download datasets ---> prepare data ---> build models ---> run experiments
 
 Each stage is run by a python script of its own that allows to custumize options in every step.																		
 ## Downloading datasets
-
-
 To download datasets use the download_all.py script from the src directory. This folder will download and extract the zip files for each dataset and sort their contents into the data/raw directory. 
 
 ```bash
