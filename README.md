@@ -1,8 +1,12 @@
 
-<img src="https://mindkindgroup.com/wp-content/uploads/2021/05/logo-negro.svg" alt="Mindkind logo" width="700"/>
 
-# MedClip  
-This is the official repository for the MedClip research project from [MindKind research group](https://mindkindgroup.com). The project investigates and compares different pretraining tasks for medical image feature extraction and captioning. 
+# MedClip     
+
+
+This is the official repository for the MedClip research project from [MindKind research group](https://mindkindgroup.com).
+<img src="https://mindkindgroup.com/wp-content/uploads/2021/05/logo-negro.svg" alt="Mindkind logo" width="400"/>
+
+The project investigates and compares different pretraining tasks for medical image feature extraction and captioning. 
 
 ## Workflow
 The experiments are structured as follows: 
