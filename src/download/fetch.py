@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-This module contains functions to download the datasets
+This module contains functions to download the datasets for medclip project
 """
 from google_drive_downloader import GoogleDriveDownloader as gdd
 
@@ -17,6 +17,7 @@ from tqdm import tqdm
 __version__ = '0.1'
 __author__ = 'Daniel Vela Jarquin'
 __email__ = 'd.vela1@hotmail.com'
+__project__='MedClip'
 
 raw_data_path = '../data/raw/'
 
@@ -75,8 +76,9 @@ def medpix():
         rename(raw_data_path+'Production',raw_data_path+'medpix')
         remove(raw_data_path+'medpix.zip')
         print('done')
-    except:
+    except Exception as e:
         print('Error downloading medpix')
+        print(e)
         
      
 

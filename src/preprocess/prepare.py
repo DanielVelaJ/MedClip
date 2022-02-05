@@ -16,13 +16,15 @@ import random
 
 
 def chexpert():
+    
     '''
-    Generates a clean dataframe from chexpert raw data
+    Generates a clean dataframe from chexpert raw data stored in the raw/data
+    directory. 
 
     '''
-    chexpert_raw_path = 'data/raw'
-    path_train = '/CheXpert-v1.0-small/train.csv'
-    path_valid = '/CheXpert-v1.0-small/valid.csv'
+    chexpert_raw_path = 'data/raw/chexpert'
+    path_train = chexpert_raw_path + '/CheXpert-v1.0-small/train.csv'
+    path_valid = chexpert_raw_path + '/CheXpert-v1.0-small/valid.csv'
     save_path= 'C:/Users/danic/MedClip/data/intermediate/inter_chexpert.xlsx'
 
     df_train = pd.read_csv(path_train)
@@ -87,6 +89,17 @@ def chexpert():
         print(findings_string)
         return findings_string
     def make_diagnosis(row):
+        '''This is helper function to clean chexpert.    
+        It through the conditions in the original chexpert data row and joins
+        all of them to be presented in natural language format
+        
+        Args: 
+            row (df row): A data frame row from the chexpert raw data
+            
+        Returns:
+            diagnosis_string (Str)
+        
+        '''
         positive_conditions=[]
         diagnosis_string=''
         for label,value in row[5:].items():
@@ -115,5 +128,5 @@ def chexpert():
     # column
     df['Anatomy']='chest, pulmonary'
     df.to_excel(save_path)
-def padchest():
+def medclip():
     return
