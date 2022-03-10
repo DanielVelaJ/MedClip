@@ -14,4 +14,3 @@ if not os.path.exists(path):
 
 
 ft.medpix()
-ft.chexpert()
