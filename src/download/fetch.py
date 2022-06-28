@@ -53,7 +53,7 @@ def extract_from_url(url=' https://www.learningcontainer.com/wp-content/uploads/
 
 def medpix():
     '''
-    Download medpix (not working for now, see fun definition file comments).
+    Download medpix (not working for now, see function definition file comments).
 
     This function downloads the medpix dataset from Mindkind's google
     drive folder:
@@ -61,7 +61,7 @@ def medpix():
     '''
     # Code below commented because it stopped working after googledrive made
     # changes for now you can download medpix.zip and manually place it in the
-    # raw folder before running the unzip function in this function.
+    # raw folder before running the unzip function in this method.
 # =============================================================================
 #     print('downloading medpix')
 #     try:
