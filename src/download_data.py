@@ -13,5 +13,5 @@ if not os.path.exists(path):
     print('created data/raw folders')
 
 
-# ft.medpix()
+ft.medpix()
 ft.chexpert()

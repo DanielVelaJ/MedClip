@@ -104,9 +104,9 @@ def medpix():
             print('Error downloading file from Dropbox: ' + str(e))
 
     # Download zip from dropbox
-    DROPBOX_ACCESS_TOKEN = 'sl.BKhpA79XQIGsB97q2TtmlKyVxKVgECg-DKJAJgN6qJ7C1dMfnw18HAqbrDjrZx-dIz1MdnrzaMH4ByNjWbZIdS8rDbEvckNZxGV4IhfOEVSfeaGA5morO8dMPikBA-1CRJm_7Tg'
-    dropbox_file_path = ''
-    zip_path = 'C:/Users/danic/MedClip/data/raw/medpix.zip'
+    DROPBOX_ACCESS_TOKEN = 'sl.BKndYwqf_ocIgyYvy25b5XGLeUdrllvvG5IxUU-lhrxvGN2-VMvV0UzKDYORMecZFAAiKp9vRJ1NlRhGe8EYItz0er-m2ZRo85HRp2bpHjRnO-glRgsxhfpTIdmeLTVFPbgV0DI'
+    dropbox_file_path = '/Global_datasets/medpix.zip'
+    zip_path = '../data/raw/medpix.zip'
     dropbox_download_file(dropbox_file_path, zip_path)
 
     path = '../data/raw/'
