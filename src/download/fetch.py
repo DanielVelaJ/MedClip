@@ -61,7 +61,8 @@ def medpix():
     '''
     # Code below commented because it stopped working after googledrive made
     # changes for now you can download medpix.zip and manually place it in the
-    # raw folder before running the unzip function in this method.
+    # raw folder before running the unzip function in this method. The file can
+    # be found here under the name Production https://drive.google.com/drive/folders/1PyI-R7x9o4pzR-s6pkHb-7XVZWh58s7Z?usp=sharing
 # =============================================================================
 #     print('downloading medpix')
 #     try:
