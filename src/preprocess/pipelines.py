@@ -12,10 +12,18 @@ it requires the following to work:
         prepare_data
 
 """
+# TODO:
+#     Finish the make_split function
+#     Implement splits in make_pipeline function
+    
 import pandas as pd
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
+def make_split(df_size,dataset, shuffle=True, seed=1):
+    """
+    Make train, 
+    """
 
 def make_pipeline(inter_dataset_path,
                   image_size=(299, 299),downscale=True):
@@ -116,7 +124,13 @@ def make_pipeline(inter_dataset_path,
         
         
     # Make splits from built datasets
-    dataset_size = 
+    dataset_size = len(df)
+    if (captions_dataset is not None):
+        captions_dataset_train=captions_dataset.take(int(0.7*dataset_size))
+        captions_dataset_val=captions_dataset.skip(int(0.7*dataset_size)).take(0.15*dataset_size)
+        
+    
+    
     return {'CLIP': clip_dataset,
             'captioning': captioning_dataset,
             'labeling': labeling_dataset}

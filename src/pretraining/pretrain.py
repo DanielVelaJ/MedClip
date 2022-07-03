@@ -4,6 +4,9 @@ Created on Tue Jun 28 18:07:30 2022
 
 @author: danic
 """
+# TODO:
+#     Factorize function from Playground but first make sure it works. 
+
 import tensorflow as tf
 
 
@@ -30,9 +33,7 @@ def labeling(dataset, encoding_size, backbone, save_model_path, reports_path):
         image_encoder: The trained image encoder which takes the image as an input and outputs a 
             feature vector of the size specified in the 'encoding_size' argument.       
     """
-    # Load the backbone
-    if (backbone == 'resnet50'):
-        backbone = tf.keras.applications.resnet50.Resnet50()
+    
         
         
     

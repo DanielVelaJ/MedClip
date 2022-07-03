@@ -9,5 +9,5 @@ directory as .csv files.
 import preprocess.prepare as prepare
 import os
 
-#prepare.chexpert()
+prepare.chexpert()
 prepare.medpix()
