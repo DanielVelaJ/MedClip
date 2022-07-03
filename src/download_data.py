@@ -12,6 +12,8 @@ if not os.path.exists(path):
     os.makedirs(path)
     print('created data/raw folders')
 
-
+print('downloading medpix')
 ft.medpix()
+print('downloading chexpert')
 ft.chexpert()
+print('Please run: wget -r -N -c -np --user danielvelaj --ask-password https://physionet.org/files/mimic-cxr-jpg/2.0.0/ to get mimic-cxr')

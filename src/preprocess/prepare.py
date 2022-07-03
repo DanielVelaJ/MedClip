@@ -32,7 +32,7 @@ def chexpert():
     chexpert_raw_path = '../data/raw/chexpert'
     path_train = chexpert_raw_path + '/CheXpert-v1.0-small/train.csv'
     path_valid = chexpert_raw_path + '/CheXpert-v1.0-small/valid.csv'
-    save_path = 'C:/Users/danic/MedClip/data/intermediate/inter_chexpert.csv'
+    save_path = '../data/intermediate/inter_chexpert.csv'
 
     df_train = pd.read_csv(path_train)
     df_valid = pd.read_csv(path_valid)

@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 
 
 def make_pipeline(inter_dataset_path,
-                  image_size=(299, 299)):
+                  image_size=(299, 299),downscale=True):
     """
     Generates model_ready training data.
 
@@ -44,16 +44,16 @@ def make_pipeline(inter_dataset_path,
             (image,labels)
 
      """
-
+    print('making input pipeline')
     df = pd.read_csv(inter_dataset_path)
 
-    def decode_and_resize(img_path):
+    def decode_and_resize(img_path,scale):
         """Recieves an image path, decodes and rescales it. """
         img = tf.io.read_file(img_path)
         img = tf.image.decode_jpeg(img, channels=3)
         img = tf.image.resize(img, image_size)
         img = tf.image.convert_image_dtype(img, tf.float32)
-        img = img/255
+        img = img*scale
         return img
 
     def to_dict(image, text):
@@ -62,9 +62,13 @@ def make_pipeline(inter_dataset_path,
 
     # Make a dataset of images
     image_paths = df['Path']
-    images_dataset = tf.data.Dataset.from_tensor_slices(image_paths).map(decode_and_resize,
+    # Set whether to leave pixel values between 0-255 or from 0-1
+    if downscale==True:
+        scale = float(1/255)
+    else:
+        scale = 1
+    tf.data.Dataset.from_tensor_slices(image_paths).map(lambda x: decode_and_resize(x,scale),
                                                                          num_parallel_calls=tf.data.AUTOTUNE)
-
     # Make a dataset with captions
     if ('Findings' in df.columns):
         # If captions are available
@@ -109,6 +113,10 @@ def make_pipeline(inter_dataset_path,
     else:
         captioning_dataset = None
 
+        
+        
+    # Make splits from built datasets
+    dataset_size = 
     return {'CLIP': clip_dataset,
             'captioning': captioning_dataset,
             'labeling': labeling_dataset}

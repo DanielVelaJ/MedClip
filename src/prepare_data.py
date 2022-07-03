@@ -9,5 +9,5 @@ directory as .csv files.
 import preprocess.prepare as prepare
 import os
 
-os.chdir('C:/Users/danic/MedClip/src')
-prepare.chexpert()
+#prepare.chexpert()
+prepare.medpix()
