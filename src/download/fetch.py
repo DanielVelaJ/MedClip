@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-This module contains functions to download the datasets for medclip project
+This module contains functions to download the datasets for medclip project. 
+
+All of the functions in this module are to be called from the download_data script. 
 """
 from google_drive_downloader import GoogleDriveDownloader as gdd
 
@@ -81,7 +83,7 @@ def medpix():
 #         print('Error downloading medpix')
 #         print(e)
 # =============================================================================
-
+    print('downloading medpix')
     def dropbox_connect():
         """Create a connection to Dropbox."""
 
@@ -96,6 +98,7 @@ def medpix():
 
         try:
             dbx = dropbox_connect()
+            print('Connection succesfull, starting download...')
 
             with open(local_file_path, 'wb') as f:
                 metadata, result = dbx.files_download(path=dropbox_file_path)
@@ -104,7 +107,7 @@ def medpix():
             print('Error downloading file from Dropbox: ' + str(e))
 
     # Download zip from dropbox
-    DROPBOX_ACCESS_TOKEN = 'sl.BKndYwqf_ocIgyYvy25b5XGLeUdrllvvG5IxUU-lhrxvGN2-VMvV0UzKDYORMecZFAAiKp9vRJ1NlRhGe8EYItz0er-m2ZRo85HRp2bpHjRnO-glRgsxhfpTIdmeLTVFPbgV0DI'
+    DROPBOX_ACCESS_TOKEN = input("Enter Daniel's dropbox access token:\n")
     dropbox_file_path = '/Global_datasets/medpix.zip'
     zip_path = '../data/raw/medpix.zip'
     dropbox_download_file(dropbox_file_path, zip_path)

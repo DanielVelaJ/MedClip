@@ -20,10 +20,28 @@ import pandas as pd
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-def make_split(df_size,dataset, shuffle=True, seed=1):
-    """
-    Make train, 
-    """
+# def make_split(dataset, shuffle=True, seed=1, fractions=[0.70,0.15,0.15]):
+#     """
+#     Shuffle with a seed and make train, validation and test.
+    
+    
+#     Arguments:
+#         dataset (tf dataset): A tensorflow dataset to split. 
+#         shuffle (boolean): optional, defaults to true. If True shuffles the dataset with
+#             the seed provided as seed argument. If false, not shuffling is applied and 
+#             train, validation and test are taken sequentially from the lower index onward. 
+#         seed (int): A seed to apply the shuffling for reproducible results. Defaults to 1. 
+#         fractions (list of 3 bools): The list contains 
+#             [fraction of data for train, fraction for valid, fraction for test]. If not provided
+#             defaults to [0.7,0.15,0.15]
+#     Returns:
+#         train (tf dataset): training dataset.
+#         val (tf dataset): validation dataset. 
+#         test (tf dataset): test dataset. 
+    
+#     """
+#     dataset.shuffle(buffer_size=, seed=None, reshuffle_each_iteration=None, name=None)
+    
 
 def make_pipeline(inter_dataset_path,
                   image_size=(299, 299),downscale=True):
@@ -123,11 +141,11 @@ def make_pipeline(inter_dataset_path,
 
         
         
-    # Make splits from built datasets
-    dataset_size = len(df)
-    if (captions_dataset is not None):
-        captions_dataset_train=captions_dataset.take(int(0.7*dataset_size))
-        captions_dataset_val=captions_dataset.skip(int(0.7*dataset_size)).take(0.15*dataset_size)
+    # # Make splits from built datasets
+    # dataset_size = len(df)
+    # if (captions_dataset is not None):
+    #     captions_dataset_train=captions_dataset.take(int(0.7*dataset_size))
+    #     captions_dataset_val=captions_dataset.skip(int(0.7*dataset_size)).take(0.15*dataset_size)
         
     
     
