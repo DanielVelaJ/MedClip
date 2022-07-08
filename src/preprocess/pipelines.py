@@ -20,9 +20,9 @@ import pandas as pd
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-# def make_split(dataset, shuffle=True, seed=1, fractions=[0.70,0.15,0.15]):
+# def make_split(dataset, shuffle=True,buffer_size=100, seed=1, fractions=[0.70,0.15,0.15]):
 #     """
-#     Shuffle with a seed and make train, validation and test.
+#     Not currently in use. Shuffle with a seed and make train, validation and test.
     
     
 #     Arguments:
@@ -30,8 +30,9 @@ import matplotlib.pyplot as plt
 #         shuffle (boolean): optional, defaults to true. If True shuffles the dataset with
 #             the seed provided as seed argument. If false, not shuffling is applied and 
 #             train, validation and test are taken sequentially from the lower index onward. 
+#         buffer_size (int): Optional. Buffer size for shuffuling. Defaults to 100 if not provided. 
 #         seed (int): A seed to apply the shuffling for reproducible results. Defaults to 1. 
-#         fractions (list of 3 bools): The list contains 
+#         fractions (list of 3 floats): The list contains 
 #             [fraction of data for train, fraction for valid, fraction for test]. If not provided
 #             defaults to [0.7,0.15,0.15]
 #     Returns:
@@ -40,11 +41,25 @@ import matplotlib.pyplot as plt
 #         test (tf dataset): test dataset. 
     
 #     """
-#     dataset.shuffle(buffer_size=, seed=None, reshuffle_each_iteration=None, name=None)
+#     if shuffle:
+#         dataset.shuffle(buffer_size=buffer_size, seed=seed)
+    
+#     n=len(dataset)
+#     train_n = int(fractions[0]*n) # Number of samples in training set
+#     val_n = int(fractions[1]*n) # Number of samples in val set
+#     test_n = int(fractions[2]*n) # Number of samples in test set
+    
+#     train=dataset.take(train_n)
+#     val=dataset.skip(train_n).take(val_n)
+#     test=dataset.skip(train_n+val_n).take(test_n)
+    
+#     return {'train':train,'val':val,'test':test}
     
 
 def make_pipeline(inter_dataset_path,
-                  image_size=(299, 299),downscale=True):
+                  image_size=(299, 299),downscale=True,
+                  shuffle=True,
+                  seed=1,fractions=[0.70,0.15,0.15]):
     """
     Generates model_ready training data.
 
@@ -58,21 +73,45 @@ def make_pipeline(inter_dataset_path,
 
     Args:
         inter_dataset_path (str): The path to an intermediate dataset
+        
         image_shape(touple): Size used to reshape images.
+        
+        shuffle (boolean): optional, defaults to true. If True shuffles the dataset with
+            the seed provided as seed argument. If false, not shuffling is applied and 
+            train, validation and test are taken sequentially from the lower index onward. 
+            
+        seed (int): A seed to apply the shuffling for reproducible results. Defaults to 1.
+        fractions (list of 3 floats): The list contains 
+            [fraction of data for train, fraction for valid, fraction for test]. If not provided
+            defaults to [0.7,0.15,0.15]
 
     Returns:
         datasets_dict(dictionary): A dictionary containing tensorflow datasets.
-        The key CLIP contains a tf dataset consisting of elements:
-            ({image,text},)
-        The key captioning contains a tf dataset consisting of elements:
-            (image,caption)
-        They key labeling contains a tf dataset consisting of elements:
-            (image,labels)
+            The key CLIP contains a tf dataset consisting of elements:
+                ({image,text},)
+            The key captioning contains a tf dataset consisting of elements:
+                (image,caption)
+            They key labeling contains a tf dataset consisting of elements:
+                (image,labels)
 
      """
     print('making input pipeline')
     df = pd.read_csv(inter_dataset_path)
 
+    
+    # Shuffle dataset
+    if shuffle:
+        df=df.sample(frac=1,random_state=seed).reset_index()
+    #Split into trian,valid and split
+    n=len(df)
+    train_n = int(fractions[0]*n) # Number of samples in training set
+    val_n = int(fractions[1]*n) # Number of samples in val set
+    test_n = int(fractions[2]*n) # Number of samples in test set
+    train_df=df[0:train_n]
+    val_df=df[train_n:train_n+val_n]
+    test_df=df[train_n+val_n:train_n+val_n+test_n]
+    
+    # define some functions to load images and manipulate tf.dataset.datasets
     def decode_and_resize(img_path,scale):
         """Recieves an image path, decodes and rescales it. """
         img = tf.io.read_file(img_path)
@@ -86,69 +125,83 @@ def make_pipeline(inter_dataset_path,
         """ To be called on dataset.map to get a dictionary"""
         return {'image': image, 'text': text}
 
-    # Make a dataset of images
-    image_paths = df['Path']
-    # Set whether to leave pixel values between 0-255 or from 0-1
-    if downscale==True:
-        scale = float(1/255)
-    else:
-        scale = 1
-    tf.data.Dataset.from_tensor_slices(image_paths).map(lambda x: decode_and_resize(x,scale),
-                                                                         num_parallel_calls=tf.data.AUTOTUNE)
-    # Make a dataset with captions
-    if ('Findings' in df.columns):
-        # If captions are available
-        captions = df['Findings'].astype(str)
-        captions_dataset = tf.data.Dataset.from_tensor_slices(captions)
-    else:
-        # If captions are not available
-        print("Prepared dataframe doestn't contain key: Findings")
-        captions_dataset = None
-
-    # Make a dataset of labels
-    label_cols = [col for col in df.columns if 'label' in col]
-    if (len(label_cols) != 0):
-        # If there are labels in the dataset
-        labels_dataset = tf.data.Dataset.from_tensor_slices(df[label_cols])
-    else:
-        labels_dataset = None
-
-    # Generate the proper structure for each pretraining task
-    # Proper structure for CLIP
-    if (captions_dataset is not None):
-        # If there are captions available
-        clip_dataset = tf.data.Dataset.zip((images_dataset, captions_dataset))
-        clip_dataset = clip_dataset.map(to_dict)
-        clip_dataset = clip_dataset.zip((clip_dataset,))
-    else:
-        clip_dataset = None
-
-    # Proper structure for labeling
-    if (labels_dataset is not None):
-        # If there are labels available
-        labeling_dataset = tf.data.Dataset.zip(
-            (images_dataset, labels_dataset))
-    else:
-        labeling_dataset = None
-
-    # Proper structure for Captioning
-    if (captions_dataset is not None):
-        # If there are captions available
-        captioning_dataset = tf.data.Dataset.zip(
-            (images_dataset, captions_dataset))
-    else:
-        captioning_dataset = None
-
-        
-        
-    # # Make splits from built datasets
-    # dataset_size = len(df)
-    # if (captions_dataset is not None):
-    #     captions_dataset_train=captions_dataset.take(int(0.7*dataset_size))
-    #     captions_dataset_val=captions_dataset.skip(int(0.7*dataset_size)).take(0.15*dataset_size)
-        
+    final_datasets=[]
+    for df in [train_df,val_df,test_df]:
+    # Make a loop for each train, val, and test split. 
     
+        # Make a dataset of images
+        # Set whether to leave pixel values between 0-255 or from 0-1
+        scale_val = 1
+        if downscale:
+            scale_val = float(1/255)
+        image_paths = df['Path']
+        images_dataset=tf.data.Dataset.from_tensor_slices(image_paths).map(lambda x: decode_and_resize(x,scale_val),
+                                                                             num_parallel_calls=tf.data.AUTOTUNE)
+        # Make a dataset with captions
+        if ('Findings' in df.columns):
+            # If captions are available
+            captions = df['Findings'].astype(str)
+            captions_dataset = tf.data.Dataset.from_tensor_slices(captions)
+        else:
+            # If captions are not available
+            print("Prepared dataframe doestn't contain key: Findings")
+            captions_dataset = None
+
+        # Make a dataset of labels
+        label_cols = [col for col in df.columns if 'label' in col]
+        if (len(label_cols) != 0):
+            # If there are labels in the dataset
+            labels_dataset = tf.data.Dataset.from_tensor_slices(df[label_cols])
+        else:
+            labels_dataset = None
+
+        # Generate the proper structure for each pretraining task
+        # Proper structure for CLIP
+        if (captions_dataset is not None):
+            # If there are captions available
+            clip_dataset = tf.data.Dataset.zip((images_dataset, captions_dataset))
+            clip_dataset = clip_dataset.map(to_dict)
+            clip_dataset = clip_dataset.zip((clip_dataset,))
+        else:
+            clip_dataset = None
+
+        # Proper structure for labeling
+        if (labels_dataset is not None):
+            # If there are labels available
+            labeling_dataset = tf.data.Dataset.zip(
+                (images_dataset, labels_dataset))
+        else:
+            labeling_dataset = None
+
+        # Proper structure for Captioning
+        if (captions_dataset is not None):
+            # If there are captions available
+            captioning_dataset = tf.data.Dataset.zip(
+                (images_dataset, captions_dataset))
+        else:
+            captioning_dataset = None
+
+        # append a dictionary with created split to final_datasets
+        dataset= {'CLIP':clip_dataset,
+                'captioning': captioning_dataset,
+                'labeling': labeling_dataset}
+        final_datasets.append(dataset)
     
-    return {'CLIP': clip_dataset,
-            'captioning': captioning_dataset,
-            'labeling': labeling_dataset}
+    # Rearange everything in one last dictionary
+    final_dictionary={'CLIP':{
+                                'train': final_datasets[0]['CLIP'],
+                                'val': final_datasets[1]['CLIP'],
+                                'test': final_datasets[2]['CLIP']
+                             },
+                      'captioning':{
+                                    'train': final_datasets[0]['captioning'],
+                                    'val': final_datasets[1]['captioning'],
+                                    'test': final_datasets[2]['captioning']
+                                  },
+                     'labeling': {
+                                    'train': final_datasets[0]['labeling'],
+                                    'val': final_datasets[1]['labeling'],
+                                    'test': final_datasets[2]['labeling']
+                                 }
+                     }
+    return final_dictionary
