@@ -11,11 +11,12 @@ path = '../data/raw'
 if not os.path.exists(path):
     os.makedirs(path)
     print('created data/raw folders')
+option1= input('Download medpix? (enter option [y] , [n]):\n')
+option2= input('Download chexpert? (enter option [y] , [n]):\n')
 
-option= input('Download medpix? (enter option [y] , [n]):\n')
-if (option=='y'):
+if (option1=='y'):
     ft.medpix()
-option= input('Download chexpert? (enter option [y] , [n]):\n')
-if (option=='y'):
+
+if (option2=='y'):
     ft.chexpert()
 print('Please run: wget -r -N -c -np --user danielvelaj --ask-password https://physionet.org/files/mimic-cxr-jpg/2.0.0/ to get mimic-cxr')
