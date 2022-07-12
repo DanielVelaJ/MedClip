@@ -23,4 +23,4 @@ if (option2=='y'):
 # print('Please run: wget -r -N -c -np --user danielvelaj --ask-password https://physionet.org/files/mimic-cxr-jpg/2.0.0/ to get mimic-cxr')
 
 if (option3=='y'): 
-    subprocess.call("./dwonload_mimic.sh",shell=True)
+    subprocess.call("./download_mimic.sh",shell=True)
