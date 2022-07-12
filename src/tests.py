@@ -87,9 +87,24 @@
 # capt_Dataset = tf.data.Dataset.zip((images_dataset, captions_dataset))
 #
 # =============================================================================
-from preprocess import pipelines
-medpix_path = 'C:/Users/danic/MedClip/data/intermediate/inter_medpix.csv'
-medpix_dict = pipelines.make_pipeline(medpix_path)
+# from preprocess import pipelines
+# medpix_path = 'C:/Users/danic/MedClip/data/intermediate/inter_medpix.csv'
+# medpix_dict = pipelines.make_pipeline(medpix_path)
 
-chexpert_path = 'C:/Users/danic/MedClip/data/intermediate/inter_chexpert.csv'
-chexpert_dict = pipelines.make_pipeline(chexpert_path)
+# chexpert_path = 'C:/Users/danic/MedClip/data/intermediate/inter_chexpert.csv'
+# chexpert_dict = pipelines.make_pipeline(chexpert_path)
+
+
+# TESTS FOR LABELING PRETRAINING
+# from pretraining  import pretrain
+# from preprocess import pipelines
+
+
+
+# data_pipeline=pipelines.make_pipeline('../data/intermediate/inter_chexpert.csv')
+# pretrain.labeling(data_pipeline,100,debug=True)
+# TEST FOR .SH within python
+import subprocess
+print("start")
+subprocess.call("./script.sh",shell=True)
+print("end")

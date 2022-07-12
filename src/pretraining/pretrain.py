@@ -6,11 +6,18 @@ Created on Tue Jun 28 18:07:30 2022
 """
 # TODO:
 #     Factorize function from Playground but first make sure it works. 
-
 import tensorflow as tf
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from preprocess import pipelines
+import datetime
 
 
-def labeling(dataset, encoding_size, backbone, save_model_path, reports_path):
+def labeling(data_pipeline, embedding_size, backbone='resnet50', train_backbone=False,
+             log_dir='../model_logs/pretraining/labeling/',
+             save_model_path='../models/image_encoders/labeling/',
+             debug=False):
     
     """ Makes a model and pre-trains it in a  multi_class classification problem (meaning each input 
     can be assigned to more than one class). 
@@ -34,7 +41,77 @@ def labeling(dataset, encoding_size, backbone, save_model_path, reports_path):
             feature vector of the size specified in the 'encoding_size' argument.       
     """
     
-        
+    backbonestr=backbone
+    date_str=datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    log_dir=log_dir+date_str
+    save_model_path=save_model_path+ date_str
+
+    # Load data
+    train_data=data_pipeline['labeling']['train'].batch(128)
+    val_data=data_pipeline['labeling']['val'].batch(128)
+
+    # Make the model
+    input_shape = train_data.element_spec[0].shape.as_list()[1:]
+    n_classes = int(train_data.element_spec[1].shape.as_list()[1])
+    inputs=tf.keras.Input(shape=input_shape, name='input')
+    if backbone=='resnet50':
+        backbone= tf.keras.applications.resnet50.ResNet50(
+            include_top=False,
+            weights='imagenet',
+            input_shape=input_shape,
+            pooling=None,
+        )
+    if (train_backbone==False):
+        for layer in backbone.layers:
+            layer.trainable=False
+    x = tf.keras.applications.resnet50.preprocess_input(inputs) # preprocess data
+    x = backbone(x)
+    x = tf.keras.layers.Flatten()(x)
+    x = tf.keras.layers.Dense(embedding_size,activation=None,name='encoding_layer')(x)
+    x = tf.keras.layers.Dense(n_classes,activation='sigmoid',name='classification_layer')(x)
+    model=tf.keras.Model(inputs=inputs,outputs=x, name='labeling_'+backbonestr)
+
+
+    # Define callbacks
+    tf_callback=tf.keras.callbacks.TensorBoard(
+            log_dir=log_dir,
+            histogram_freq=0,
+            write_graph=True,
+            write_images=False,
+            write_steps_per_second=False,
+            update_freq='epoch',
+            profile_batch=0,
+            embeddings_freq=0,
+            embeddings_metadata=None,
+        )
+
+    checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+        filepath=save_model_path,
+        save_weights_only=False,
+        monitor='val_loss',
+        mode='min',
+        save_best_only=True)
+
+
+
+
+    model.compile(loss=tf.keras.losses.BinaryCrossentropy(),
+                  optimizer='adam',
+                  metrics=['accuracy','AUC','Precision','Recall']
+                 )
+    print('Labeling pretraining initialized with model: \n')
+    print(model.summary())
+    if debug==True:
+        print('Fitting the model for 3 epochs on a debug fraction of the dataset')
+        model.fit(train_data.take(2),epochs=3,
+                  callbacks= [tf_callback,checkpoint_callback],
+                  validation_data=val_data.take(1))
+    elif debug==False:
+        print('Fitting the model for 20 epochs')
+        model.fit(train_data,epochs=20,
+                  callbacks=[tf_callback,
+                             checkpoint_callback],
+                             validation_data=val_data)
         
     
     
