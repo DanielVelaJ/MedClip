@@ -353,7 +353,7 @@ def check_images(path_list):
 
         iters = iters+1
         seconds = (len(path_list)-iters)*np.mean(process_duration)
-        remaining_time = ','.split(str(datetime.timedelta(seconds=seconds)))[0]
+        remaining_time = '.'.split(str(datetime.timedelta(seconds=seconds)))[0]
         print(f'Remaining time: {remaining_time}\n' +
               f'Average time per image: {np.mean(process_duration)}')
     return bad_images
