@@ -96,15 +96,15 @@
 
 
 # TESTS FOR LABELING PRETRAINING
-# from pretraining  import pretrain
-# from preprocess import pipelines
+from pretraining  import pretrain
+from preprocess import pipelines
+data_pipeline=pipelines.make_pipeline('../data/intermediate/inter_chexpert.csv')
+pretrain.labeling(data_pipeline,100,debug=True)
 
 
 
-# data_pipeline=pipelines.make_pipeline('../data/intermediate/inter_chexpert.csv')
-# pretrain.labeling(data_pipeline,100,debug=True)
 # TEST FOR .SH within python
-import subprocess
-print("start")
-subprocess.call("./script.sh",shell=True)
-print("end")
+# import subprocess
+# print("start")
+# subprocess.call("./script.sh",shell=True)
+# print("end")

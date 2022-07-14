@@ -91,7 +91,7 @@ tensorflow-estimator==2.8.0
 tensorflow-hub==0.12.0
 tensorflow-io-gcs-filesystem==0.26.0
 tensorflow-metadata==1.9.0
-tensorflow-text==2.9.0
+tensorflow-text==2.8.1
 termcolor==1.1.0
 toml==0.10.2
 tornado==6.2

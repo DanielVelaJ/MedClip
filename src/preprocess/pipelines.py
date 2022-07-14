@@ -74,8 +74,9 @@ def make_pipeline(inter_dataset_path,
     Args:
         inter_dataset_path (str): The path to an intermediate dataset
         
-        image_shape(touple): Size used to reshape images.
+        image_size(touple): Size used to reshape images.
         
+        downscale(bool): Whether to divide image values by 255
         shuffle (boolean): optional, defaults to true. If True shuffles the dataset with
             the seed provided as seed argument. If false, not shuffling is applied and 
             train, validation and test are taken sequentially from the lower index onward. 
@@ -126,6 +127,8 @@ def make_pipeline(inter_dataset_path,
         return {'image': image, 'text': text}
 
     final_datasets=[]
+    image_paths_list=[]
+    captions_list=[]
     for df in [train_df,val_df,test_df]:
     # Make a loop for each train, val, and test split. 
     
@@ -135,6 +138,7 @@ def make_pipeline(inter_dataset_path,
         if downscale:
             scale_val = float(1/255)
         image_paths = df['Path']
+        image_paths_list.append(image_paths.to_list())
         images_dataset=tf.data.Dataset.from_tensor_slices(image_paths).map(lambda x: decode_and_resize(x,scale_val),
                                                                              num_parallel_calls=tf.data.AUTOTUNE)
         # Make a dataset with captions
@@ -142,6 +146,7 @@ def make_pipeline(inter_dataset_path,
             # If captions are available
             captions = df['Findings'].astype(str)
             captions_dataset = tf.data.Dataset.from_tensor_slices(captions)
+            captions_list.append(captions.to_list())
         else:
             # If captions are not available
             print("Prepared dataframe doestn't contain key: Findings")
@@ -191,7 +196,14 @@ def make_pipeline(inter_dataset_path,
     final_dictionary={'CLIP':{
                                 'train': final_datasets[0]['CLIP'],
                                 'val': final_datasets[1]['CLIP'],
-                                'test': final_datasets[2]['CLIP']
+                                'test': final_datasets[2]['CLIP'],
+                                'train_img_paths': image_paths_list[0],
+                                'val_img_paths': image_paths_list[1],
+                                'test_img_paths': image_paths_list[2],
+                                'train_captions': captions_list[0],
+                                'val_captions': captions_list[1],
+                                'test_captions': captions_list[2],
+        
                              },
                       'captioning':{
                                     'train': final_datasets[0]['captioning'],

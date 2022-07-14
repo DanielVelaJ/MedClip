@@ -5,18 +5,28 @@ Created on Tue Jun 28 18:07:30 2022
 @author: danic
 """
 # TODO:
-#     Factorize function from Playground but first make sure it works. 
+import datetime
+
+# Tensorflow imports
 import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
+import tensorflow_hub as hub
+import tensorflow_text as text
+import tensorflow_datasets as tfds
+
+# Other pylab imports
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+# local project imports
 from preprocess import pipelines
-import datetime
 
 
 def labeling(data_pipeline, embedding_size, backbone='resnet50', train_backbone=False,
              log_dir='../model_logs/pretraining/labeling/',
-             save_model_path='../models/image_encoders/labeling/',
+             save_model_path='../models/pretraining/labeling/',
              debug=False):
     
     """ Makes a model and pre-trains it in a  multi_class classification problem (meaning each input 
@@ -116,3 +126,24 @@ def labeling(data_pipeline, embedding_size, backbone='resnet50', train_backbone=
     
     
     return
+
+def clip(data_pipeline, embedding_size, 
+         image_backbone='resnet50',
+         text_backbone='bert',
+         train_image_backbone=False,
+         train_text_backbone=False,
+         log_dir='../model_logs/pretraining/clip/',
+         save_model_path='../models/pretraining/clip/',
+         debug=False):
+    """ This function makes and pretrains a text and image encoder 
+        on the clip architecture 
+        
+        Arguments: 
+        data_pipeline(dict): a d
+        
+        
+        
+        
+        
+        """
+

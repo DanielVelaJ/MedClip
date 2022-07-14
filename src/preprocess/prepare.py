@@ -10,6 +10,9 @@ after downloaded and to prepare dataframes containing clean and
 
  The format
 """
+#TODO
+# Fix the time estimates in the fix images function
+# Add image checking to chexpert and to mimic
 
 import pandas as pd
 import random
@@ -294,6 +297,14 @@ def medpix():
     suffix = '.jpg'
     df.Path = prefix+df.Path.astype(str)+suffix
 
+    
+    
+    # Check that the images exist or otherwise eliminate them 
+    bad_images=check_images(df.Path.to_list())
+    print('listing bad images')
+    print(bad_images)
+    print(f'there are a total of {len(bad_images)} bad images')
+    df=df.loc[~df.Path.isin(bad_images)]
     df.to_csv(save_path)
     return
 
@@ -341,8 +352,8 @@ def check_images(path_list):
         process_duration.append(tock-tick)
 
         iters = iters+1
-        seconds = (len(path_list)-iters)*np.max(process_duration)
-        remaining_time = str(datetime.timedelta(seconds=seconds))
+        seconds = (len(path_list)-iters)*np.mean(process_duration)
+        remaining_time = ','.split(str(datetime.timedelta(seconds=seconds)))[0]
         print(f'Remaining time: {remaining_time}\n' +
               f'Average time per image: {np.mean(process_duration)}')
     return bad_images
