@@ -1,0 +1,5 @@
+Return the captions as well as the splits in the pipeline scripts. 
+Generate image visualizations on CLIP.
+Train CLIP on COCO.
+Generate retrieval accuracy function and log it in tensorboard. 
+Check the length of BERT embedding
