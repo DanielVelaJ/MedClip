@@ -183,6 +183,7 @@ def make_pipeline(inter_dataset_path,
             # If there are captions available
             captioning_dataset = tf.data.Dataset.zip(
                 (images_dataset, captions_dataset))
+            captioning_dataset = captioning_dataset.map(to_dict)
         else:
             captioning_dataset = None
 
@@ -208,7 +209,13 @@ def make_pipeline(inter_dataset_path,
                       'captioning':{
                                     'train': final_datasets[0]['captioning'],
                                     'val': final_datasets[1]['captioning'],
-                                    'test': final_datasets[2]['captioning']
+                                    'test': final_datasets[2]['captioning'],
+                                    'train_img_paths': image_paths_list[0],
+                                    'val_img_paths': image_paths_list[1],
+                                    'test_img_paths': image_paths_list[2],
+                                    'train_captions': captions_list[0],
+                                    'val_captions': captions_list[1],
+                                    'test_captions': captions_list[2]
                                   },
                      'labeling': {
                                     'train': final_datasets[0]['labeling'],
