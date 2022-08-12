@@ -145,6 +145,9 @@ def make_pipeline(inter_dataset_path,
         if ('Findings' in df.columns):
             # If captions are available
             captions = df['Findings'].astype(str)
+            # Add start and end tokens to the captions
+            captions.apply(lambda x: '<start> ')
+            
             captions_dataset = tf.data.Dataset.from_tensor_slices(captions)
             captions_list.append(captions.to_list())
         else:
@@ -224,3 +227,6 @@ def make_pipeline(inter_dataset_path,
                                  }
                      }
     return final_dictionary
+
+def coco()
+    

@@ -25,7 +25,7 @@ import datetime
 import pandas as pd
 from PIL import Image
 import datetime
-
+from tqdm import tqdm
 
 def chexpert():
     '''
@@ -258,9 +258,9 @@ def medpix():
     df.drop(index=df[filter5].index, inplace=True)
 
     #
-    # (7) Eliminate images that have no plane or modality
+    # (7) Eliminate images that have no plane or modality or Findings
     df.dropna(axis='index', how='any',
-              subset=['Plane', 'Core_Modality'], inplace=True)
+              subset=['Plane', 'Core_Modality', 'Findings'], inplace=True)
 
     # (8) Eliminate images where no full modality is not provided.
     df.dropna(axis='index', how='any', subset=['Full_Modality'], inplace=True)
@@ -291,6 +291,9 @@ def medpix():
     # Take only relevant columns
     df = df[['Path', 'Modality', 'Anatomy', 'Patient history',
              'Findings', 'Impression', 'Diagnosis']]
+    
+    # Add <start> and <end> tokens
+    df['Findings'] = df['Findings'].apply(lambda x: '<start> '+str(x)+' <end>')
 
     # Make paths relative to source
     prefix = '../data/raw/medpix/Images/'
@@ -322,17 +325,15 @@ def check_images(path_list):
         bad_images (list of str): list of paths pointing to corrupted images.
 
     """
-    process_duration = []  # list to store time for each loop
-    iters = 0
+
 
     ext_list = ['jpg', 'png', 'jpeg', 'gif', 'bmp']
     bad_images = []
-    for f_path in path_list:
-        tick = time.time()
+    for f_path in tqdm(path_list):
         try:
             tip = imghdr.what(f_path)
         except:
-            print(f_path+' not found')
+            # print(f_path+' not found')
             bad_images.append(f_path)
             continue
         if ext_list.count(tip) == 0:
@@ -344,18 +345,12 @@ def check_images(path_list):
                 img = cv2.imread(f_path)
                 shape = img.shape
             except:
-                print('file ', f_path, ' is not a valid image file')
+                # print('file ', f_path, ' is not a valid image file')
                 bad_images.append(f_path)
         else:
-            print('could not find file {path}')
-        tock = time.time()
-        process_duration.append(tock-tick)
+            pass
+            # print('could not find file {path}')
 
-        iters = iters+1
-        seconds = (len(path_list)-iters)*np.mean(process_duration)
-        remaining_time = '.'.split(str(datetime.timedelta(seconds=seconds)))[0]
-        print(f'Remaining time: {remaining_time}\n' +
-              f'Average time per image: {np.mean(process_duration)}')
     return bad_images
 
 
