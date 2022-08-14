@@ -292,8 +292,15 @@ def medpix():
     df = df[['Path', 'Modality', 'Anatomy', 'Patient history',
              'Findings', 'Impression', 'Diagnosis']]
     
-    # Add <start> and <end> tokens
-    df['Findings'] = df['Findings'].apply(lambda x: '<start> '+str(x)+' <end>')
+    # Save findings in different columns
+    df['Only_Findings'] = df['Findings']
+
+    # Turn Findings into captions but keep title Findings for copatibility with pipelines module
+    df['Findings']=df.apply(lambda row: ('<start>'+
+                                         ' Modality: ' + str(row['Modality'])+
+                                         ' Anatomy: ' + str(row['Anatomy'])+
+                                         ' Findings: '+ str(row['Findings'])+
+                                         ' Impression: '+ str(row['Impression'])+' <end>') ,axis=1)
 
     # Make paths relative to source
     prefix = '../data/raw/medpix/Images/'

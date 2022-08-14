@@ -228,5 +228,5 @@ def make_pipeline(inter_dataset_path,
                      }
     return final_dictionary
 
-def coco()
+
     
