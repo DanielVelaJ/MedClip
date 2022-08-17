@@ -47,7 +47,7 @@ def chexpert():
         '''This is helper function to clean chexpert. It generates a full
         modality string out of other preexisting columns'''
         modality_string = 'XR - Plain Film '
-        print('Arranging modality')
+        # print('Arranging modality')
         if(isinstance(row['AP/PA'], str)):
             modality_string = modality_string+row['AP/PA']
         if(isinstance(row['Frontal/Lateral'], str)):
@@ -60,7 +60,7 @@ def chexpert():
         findings string out of labels of findings
 
         """
-        print('arranging findings')
+        # print('arranging findings')
         initial_clause_options = ["X-ray demonstrates ",
                                   "X-ray shows ",
                                   "The X-ray study is indicative of ",
@@ -196,6 +196,14 @@ def chexpert():
     df[new_cols] = one_hot
     # Eliminate original columns
     df.drop(columns=strict_label_cols, inplace=True)
+    
+    # Build the Full Caption column to be predicted by models
+    df['Full_Caption']=df.apply(lambda row: ('<start>'+
+                                         ' Modality: ' + str(row['Modality'])+
+                                         ' Anatomy: ' + str(row['Anatomy'])+
+                                         ' Findings: '+ str(row['Findings'])+
+                                         ' Impression: '+ str(row['Impression'])+' <end>') ,axis=1)
+    
     # Make paths realtive to src
     prefix = '../data/raw/chexpert/'
     df.Path = prefix+df.Path
@@ -293,10 +301,10 @@ def medpix():
              'Findings', 'Impression', 'Diagnosis']]
     
     # Save findings in different columns
-    df['Only_Findings'] = df['Findings']
+    df['Findings'] = df['Findings']
 
-    # Turn Findings into captions but keep title Findings for copatibility with pipelines module
-    df['Findings']=df.apply(lambda row: ('<start>'+
+    # Generate the Full caption to be predicted by models.
+    df['Full_Caption']=df.apply(lambda row: ('<start>'+
                                          ' Modality: ' + str(row['Modality'])+
                                          ' Anatomy: ' + str(row['Anatomy'])+
                                          ' Findings: '+ str(row['Findings'])+
