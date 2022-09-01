@@ -27,6 +27,16 @@ from PIL import Image
 import datetime
 from tqdm import tqdm
 
+def assign_group(row, grouping):
+    """Given a dictionary of groupings, return the corresponding group.
+    
+    This function is to be used within a call to an .apply() method for 
+    a pandas series. 
+    """
+    for group,values in grouping.items():
+        if row in values:
+            return group
+
 def chexpert():
     '''
     Generates a clean dataframe from chexpert raw data stored in the raw/data
@@ -266,11 +276,15 @@ def medpix():
     df.drop(index=df[filter5].index, inplace=True)
 
     #
-    # (7) Eliminate images that have no plane or modality or Findings
+    # (7) Eliminate images that have no plane or modality or Findings or Location
+    # Editted so as to only filter findings column because Mamograph doesn't have core modality but is important. 
+    # Also, there is no need for view because ultrasound doesn't have view. 
     df.dropna(axis='index', how='any',
-              subset=['Plane', 'Core_Modality', 'Findings'], inplace=True)
+              subset=['Findings'], inplace=True)
+    df.dropna(axis='index', how='any',
+              subset=['Location'], inplace=True)
 
-    # (8) Eliminate images where no full modality is not provided.
+    # (8) Eliminate images where no full modality is provided.
     df.dropna(axis='index', how='any', subset=['Full_Modality'], inplace=True)
 
     # (9) Do something about the rows containing "Replace with", perhaphs
@@ -285,20 +299,61 @@ def medpix():
     # 'Drawing', 'Not specified ', 'Not assigned' and 'Empty'
     filterextra = (
         (df['Full_Modality'].str.contains('Drawing', na=False)) |
+        (df['Full_Modality'].str.contains('Not', na=False)) |
         (df['Full_Modality'].str.contains('Not', na=False))
     )
     df.drop(index=df[filterextra].index, inplace=True)
 
+    # (11) Filter so as to only have the relevant core modalities
+    groupings={'MR':['MR'],
+           'CT':['CT'],
+           'XR':['XR'],
+           'US':['US','US-D'],
+           'AN':['AN','CTA','MRA'],
+           'HE':['HE','Histology'],
+           'PET/NM':['PET','NM']
+          }
+
+    valid_mods=[]
+    for group,modalities in groupings.items(): 
+        for modality in modalities: 
+            valid_mods.append(modality)
+    df=df.loc[df.Core_Modality.isin(valid_mods)]
+
+    # (12) Add primary modality group names
+    df['Modality_Group']=df.Core_Modality.apply(lambda x: assign_group(x,groupings))
+    
+    # (13) Add primary anatomy groups
+    anatomy_groupings={'Brain':['Brain and Neuro','Nerve, central'],
+                   'Musculoskeletal':['MSK - Musculoskeletal'],
+                   'Pulmonary':['Chest, Pulmonary (ex. Heart)'],
+                   'Breast':['Breast and Mammography'],
+                   'Abdomen':['Abdomen - Generalized','Gastrointestinal'],
+                   'Genitourinary':['Genitourinary'],
+                   'Spine':['Spine'],
+                   'Head and Neck':['Head and Neck (ex. orbit)','Eye and Orbit (exclude Ophthalmology)'],
+                   'Cardiovascular':['Vascular','Cardiovascular (inc. Heart)'],
+                  }
+    df['Anatomy_Group']=df.Location.apply(lambda x:assign_group(x,anatomy_groupings))
+    df.Anatomy_Group.fillna('Other',inplace=True)
+    
     # Rename columns to fit standard
     df.rename(columns={'Case_Diagnosis': 'Impression', 'Location': 'Anatomy',
                        'Caption': 'Caption', 'ID': 'Path',
                        'Case_URL': 'File URL', 'Image_URL': 'URL',
                        'Full_Modality': 'Modality',
                        'History': 'Patient history'}, inplace=True)
-
+    
+    
+    
+    
+    
+    
+    
     # Take only relevant columns
     df = df[['Path', 'Modality', 'Anatomy', 'Patient history',
-             'Findings', 'Impression', 'Diagnosis']]
+             'Findings', 'Impression', 'Diagnosis','Core_Modality',
+             'Modality_Group','Anatomy_Group']]
     
     # Save findings in different columns
     df['Findings'] = df['Findings']
@@ -314,8 +369,6 @@ def medpix():
     prefix = '../data/raw/medpix/Images/'
     suffix = '.jpg'
     df.Path = prefix+df.Path.astype(str)+suffix
-
-    
     
     # Check that the images exist or otherwise eliminate them 
     bad_images=check_images(df.Path.to_list())

@@ -13,48 +13,14 @@ it requires the following to work:
 
 """
 # TODO:
-#     Finish the make_split function
-#     Implement splits in make_pipeline function
+#  Extract functions from within the make_pipeline function (get definition outside)
     
 import pandas as pd
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import tensorflow_datasets as tfds
 
-# def make_split(dataset, shuffle=True,buffer_size=100, seed=1, fractions=[0.70,0.15,0.15]):
-#     """
-#     Not currently in use. Shuffle with a seed and make train, validation and test.
-    
-    
-#     Arguments:
-#         dataset (tf dataset): A tensorflow dataset to split. 
-#         shuffle (boolean): optional, defaults to true. If True shuffles the dataset with
-#             the seed provided as seed argument. If false, not shuffling is applied and 
-#             train, validation and test are taken sequentially from the lower index onward. 
-#         buffer_size (int): Optional. Buffer size for shuffuling. Defaults to 100 if not provided. 
-#         seed (int): A seed to apply the shuffling for reproducible results. Defaults to 1. 
-#         fractions (list of 3 floats): The list contains 
-#             [fraction of data for train, fraction for valid, fraction for test]. If not provided
-#             defaults to [0.7,0.15,0.15]
-#     Returns:
-#         train (tf dataset): training dataset.
-#         val (tf dataset): validation dataset. 
-#         test (tf dataset): test dataset. 
-    
-#     """
-#     if shuffle:
-#         dataset.shuffle(buffer_size=buffer_size, seed=seed)
-    
-#     n=len(dataset)
-#     train_n = int(fractions[0]*n) # Number of samples in training set
-#     val_n = int(fractions[1]*n) # Number of samples in val set
-#     test_n = int(fractions[2]*n) # Number of samples in test set
-    
-#     train=dataset.take(train_n)
-#     val=dataset.skip(train_n).take(val_n)
-#     test=dataset.skip(train_n+val_n).take(test_n)
-    
-#     return {'train':train,'val':val,'test':test}
+
     
 
 def make_pipeline(inter_dataset_path,
@@ -208,7 +174,9 @@ def make_pipeline(inter_dataset_path,
         if (captions_dataset is not None):
             # If there are captions available
             captioning_dataset = tf.data.Dataset.zip(
-                (images_dataset, captions_dataset))
+                # Dimensions bellow are expanded for compatibility with models that train 
+                # with more than one caption per image. 
+                (images_dataset, captions_dataset.map(lambda x:tf.expand_dims(x,axis=0)))) 
             captioning_dataset = captioning_dataset.map(to_dict)
         else:
             captioning_dataset = None
@@ -321,9 +289,9 @@ def coco(downscale=True,image_size=(299,299)):
                                     'train_img_paths': train_img_paths,
                                     'val_img_paths': val_img_paths,
                                     'test_img_paths': test_img_paths,
-                                    # 'train_captions': captions_list[0],
-                                    # 'val_captions': captions_list[1],
-                                    # 'test_captions': captions_list[2],
+                                    'train_captions': train_capts,
+                                    'val_captions': val_capts,
+                                    'test_captions': test_capts
 
                                  },
                           'captioning':{
@@ -333,9 +301,9 @@ def coco(downscale=True,image_size=(299,299)):
                                         'train_img_paths': train_img_paths,
                                         'val_img_paths': val_img_paths,
                                         'test_img_paths': test_img_paths,
-                                        # 'train_captions': captions_list[0],
-                                        # 'val_captions': captions_list[1],
-                                        # 'test_captions': captions_list[2]
+                                        'train_captions': train_capts,
+                                        'val_captions': val_capts,
+                                        'test_captions': test_capts
                                       }
                          }
     return dataset_dictionary
@@ -351,14 +319,16 @@ def get_coco_image(dataset,downscale=True,image_size=(299,299)):
 def get_coco_capts(dataset):
     """Map function to get an array of captions for every image. 
     
-    Coco dataset uses 5 captions per image"""
+    Coco dataset uses 5 captions per image for most images but some have 6 or 7 
+    we will crop them to 5 for ease of implementation of batching in the pipeline. 
+    Otherwise tensorflow cannot batch different sizes. """
     
-    captions=dataset['captions']['text']
+    captions=dataset['captions']['text'][0:5]
     return captions
 
-def to_dict(image, text):
-        """ To be called on dataset.map to get a dictionary"""
-        return {'image': image, 'text': text}
 def get_coco_img_paths(dataset):
     """Map function to get the image paths from original coco dataset."""
     return dataset['image/filename']
+def to_dict(image, text):
+    """ To be called on dataset.map to get a dictionary"""
+    return {'image': image, 'text': text}
