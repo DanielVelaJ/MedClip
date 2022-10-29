@@ -81,10 +81,10 @@ def make_pipeline(inter_dataset_path,
     # therefore we do the following:
     if 'chexpert' not in inter_dataset_path:
         # Get the values that are unique
-        uniques=df[~df.duplicated('Findings')]
-        duplicated=df[df.duplicated('Findings')]
+        uniques=df[~df.duplicated('Full_Caption')]
+        duplicated=df[df.duplicated('Full_Caption')]
 
-        if len(uniques)>=(val_n+val_n):
+        if len(uniques)>=(val_n+test_n):
         # If there are enough unique values to fill the validation and test sets:
             val_df=uniques[0:val_n]
             test_df=uniques[val_n:val_n+test_n]
@@ -135,7 +135,7 @@ def make_pipeline(inter_dataset_path,
             # If captions are available
             captions = df['Full_Caption'].astype(str)
             # Add start and end tokens to the captions
-            captions.apply(lambda x: '<start> ')
+            # captions.apply(lambda x: '<start> ')
             
             captions_dataset = tf.data.Dataset.from_tensor_slices(captions)
             captions_list.append(captions.to_list())

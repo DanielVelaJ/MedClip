@@ -351,19 +351,20 @@ def medpix():
     
     
     # Take only relevant columns
-    df = df[['Path', 'Modality', 'Anatomy', 'Patient history',
-             'Findings', 'Impression', 'Diagnosis','Core_Modality',
-             'Modality_Group','Anatomy_Group']]
+    df = df[['Path', 'Modality','Plane', 'Anatomy', 'Patient history',
+         'Findings', 'Impression', 'Diagnosis','Core_Modality',
+         'Modality_Group','Anatomy_Group']]
     
     # Save findings in different columns
     df['Findings'] = df['Findings']
 
     # Generate the Full caption to be predicted by models.
     df['Full_Caption']=df.apply(lambda row: ('<start>'+
-                                         ' Modality: ' + str(row['Modality'])+
-                                         ' Anatomy: ' + str(row['Anatomy'])+
-                                         ' Findings: '+ str(row['Findings'])+
-                                         ' Impression: '+ str(row['Impression'])+' <end>') ,axis=1)
+                                     ' Modality: ' + str(row['Modality'])+
+                                         ' Plane: ' + str (row['Plane']) +
+                                     ' Anatomy: ' + str(row['Anatomy'])+
+                                     ' Findings: '+ str(row['Findings'])+
+                                     ' Impression: '+ str(row['Impression'])+' <end>') ,axis=1)
 
     # Make paths relative to source
     prefix = '../data/raw/medpix/Images/'
@@ -423,172 +424,214 @@ def check_images(path_list):
 
 
 def mimic():
+    """Obtain clean dataframe for mimic dataset.
     """
-    Preprocess mimic dataset
-    
-    The mimic dataset is split in two directories comming from different sources. 
-    These are the mimic-cxr database and mimic-cxr-jpg. This function merges the 
-    information in csv files from the orginal datasets to create a new dataframe
-    that contains the paths to the images and the medical reports. 
-    
-    The function also implements two forms of working with different studies. Since
-    the original dataset contained studies that had more than 1 image per report, we
-    decided to use them in 2 different ways:
-        
-        1. Divide the two images into different samples, each with their report. These
-            instances are labeled in the resulteing dataframe with 'broken' in the 'type' 
-            column.
-        
-        2. Concatenate the two images and represent them as one sample with one report. 
-            These instances are labeled in the resulting dataframe with 'multi' in the
-            type column
-    
-    Args:
-        None
-    Returns
-        df (pandas df): A pandas dataframe with paths to images and their corresponding 
-            labels and captions. 
-    
-    """
-    def get_concat_h(im1, im2):
-        ''' Helper function to prepare mimic.'''
-        dst = Image.new('RGB', (im1.width + im2.width, im1.height))
-        dst.paste(im1, (0, 0))
-        dst.paste(im2, (im1.width, 0))
-        return dst
-    
-    def merge_studies(df):
-        """ 
-        Helper function to prepare mimic. 
-        Helper function to iterate over the mimic dataset and either brake
-        or concatenate images that correspond to the same study. This function 
-        is to be called as follows: "df.groupby('study_id').map(merge_studies)"
-        
-        
-        
+    def process_mimic(row): 
+        """Process a row in the cxr-record-list.csv dataframe to 
+        include caption and complete path to jpg image. 
         """
-        global counter
-        global times
-
-        tick=time.time()
-        # Get the names of the images and the study they belong to. 
-        img_names=df['dicom_id'].to_list()
-        study_path=df['path'].to_list()[0] # The path here is still not relative to the 
-                                           # data folder, it will be modified in the load 
-                                           # report section (comments)
-        study_id=str(df.study_id.to_list()[0])
-
-        if len(df)>1:
-        # If there is more than one image in this study:
-            # print(study_path)
-            full_img_paths=[]
-
-            #Construct the paths of the images that belong to the same study. 
-            for img_name in img_names:
-            # For images with that belong to the same study
-                full_img_path='../data/raw/physionet.org/files/mimic-cxr-jpg/2.0.0/'+study_path[:-4]+'/'+img_name+'.jpg'
-                full_img_paths.append(full_img_path)
-            # print(full_img_paths)
-
-
-            # Concatenate the images of the same study together. 
-            while len(full_img_paths)>1:
-                img1=Image.open(full_img_paths.pop(0))
-                img2=Image.open(full_img_paths.pop(0))
-                concat_path='../data/raw/mimic_fusions/'+study_id+'.jpg'
-                concat=get_concat_h(img1,img2).save(concat_path)
-                full_img_paths.append(concat_path)
-
-        # Find the report and labels: Since all of the images in the input df belong to one 
-        # study, they must have the same report and labels
-
-        # Load report into the contesnts variable
-        full_study_path='../data/raw/physionet.org/files/mimic-cxr/2.0.0/'+study_path
         try:
-            with open(full_study_path) as f:
-                contents = f.readlines()
+        #Do all of the following inside try to avoid lengthy stops
+            text_path_prefix='../data/raw/physionet.org/files/mimic-cxr/2.0.0/'
+            image_path_prefix= '../data/raw/physionet.org/files/mimic-cxr-jpg/2.0.0/'
+            text_path_suffix=texts_df.loc[texts_df['study_id']==row['study_id']]['path'].iloc[0]
+
+            # Obtain the report ---------------------------
+            text_path=text_path_prefix+text_path_suffix
+            text_file = open(text_path, "r") # Read report into string
+            report = text_file.read()  #read whole file to a string
+            text_file.close() #close file
+            row['Full_Caption']='<start> '+ report+' <end>' # Add report to row
+
+            # get image path------------------------------
+            row['Path']=image_path_prefix+row['path'][0:-3]+'jpg' # Add image path to row.
+
+            return row[['dicom_id','Path','Full_Caption']] # Return only selected columns of row. 
         except:
-            print('problems reading\n'+full_study_path)
-            contents=[]
-        contents=''.join(contents).strip()
-        report = contents
-
-        # Load the labels into a list
-        label_cols=['Atelectasis', 'Cardiomegaly',
-                   'Consolidation', 'Edema', 'Enlarged Cardiomediastinum', 'Fracture',
-                   'Lung Lesion', 'Lung Opacity', 'No Finding', 'Pleural Effusion',
-                   'Pleural Other', 'Pneumonia', 'Pneumothorax', 'Support Devices']
-
-        labels=df[label_cols].iloc[0].to_list()
-
-
-        # Make a df with all of the samples for this study:
-        # Samples will have 3 categories: 
-        #     multi: images in this category are the result of the concatenation of
-        #         images of the same study and have only one asociated label and report. 
-        #     unique: images in this category are part of a study that only had one 
-        #         image as part of it and have only one asociated label and report. 
-        #     broken: images in this category belong to a study that had more than one
-        #         image in it but they were broken down into individual examples with
-        #         repeated information (labels and report) for each of them.  
-
-        rows=[]
-        # Make the multi type row
-        if len(df)>1:
-            multi_row=[concat_path]+labels+[report]+['multi'] # 1 row for merged images
-            rows.append(multi_row)
-
-        # Make the broken type rows
-            paths=[]
-            for img_name in img_names:
-            # For images with that belong to the same study
-                path='../data/raw/physionet.org/files/mimic-cxr-jpg/2.0.0/'+study_path[:-4]+'/'+img_name+'.jpg'
-                broken_row=[path]+labels+[report]+['broken']
-                rows.append(broken_row)
-        # Make the unique type row
-        if len(df)==1:
-
-            #print(study_path)
-            img_path='../data/raw/physionet.org/files/mimic-cxr-jpg/2.0.0/'+study_path[:-4]+'/'+img_names[0]+'.jpg'
-            unique_row = [img_path]+labels+[report]+['unique']
-            rows.append(unique_row)
-            # print(unique_row)
-
-        # Make a final dataframe with all types of rows.
-        rows_df=pd.DataFrame(rows,columns=['path']+label_cols+['report','study_type'])
-        # rows_df['study_id']=study_id
-
-
-        # Calculate and show remaining time to finish computing
-        counter = counter-1
-        tock=time.time()
-        times.append(tock-tick)
-        print('Remaining time: {}'.format(str(datetime.timedelta(seconds=counter*np.mean(times)))))
+        # If the process fails then writ error into Full_Caption and Path columns. 
+            row['Full_Caption']='error'
+            row['Path']='error'
+            return row[['dicom_id','Path','Full_Caption']]
     
-        return rows_df
+    images_df_path="../data/raw/physionet.org/files/mimic-cxr/2.0.0/cxr-record-list.csv"
+    texts_df_path="../data/raw/physionet.org/files/mimic-cxr/2.0.0/cxr-study-list.csv"
+    labels_df_path="../data/raw/physionet.org/files/mimic-cxr-jpg/2.0.0/mimic-cxr-2.0.0-chexpert.csv"
+
+
+    images_df=pd.read_csv(images_df_path)
+    texts_df=pd.read_csv(texts_df_path)
+    labels_df=pd.read_csv(labels_df_path)
+    tqdm.pandas()
+    df=images_df.progress_apply(process_mimic,axis=1)
+    df.to_csv('../data/intermediate/mimic.csv')
+
+# def mimic():
+#     """
+#     Preprocess mimic dataset
+    
+#     The mimic dataset is split in two directories comming from different sources. 
+#     These are the mimic-cxr database and mimic-cxr-jpg. This function merges the 
+#     information in csv files from the orginal datasets to create a new dataframe
+#     that contains the paths to the images and the medical reports. 
+    
+#     The function also implements two forms of working with different studies. Since
+#     the original dataset contained studies that had more than 1 image per report, we
+#     decided to use them in 2 different ways:
+        
+#         1. Divide the two images into different samples, each with their report. These
+#             instances are labeled in the resulteing dataframe with 'broken' in the 'type' 
+#             column.
+        
+#         2. Concatenate the two images and represent them as one sample with one report. 
+#             These instances are labeled in the resulting dataframe with 'multi' in the
+#             type column
+    
+#     Args:
+#         None
+#     Returns
+#         df (pandas df): A pandas dataframe with paths to images and their corresponding 
+#             labels and captions. 
+    
+#     """
+#     def get_concat_h(im1, im2):
+#         ''' Helper function to prepare mimic.'''
+#         dst = Image.new('RGB', (im1.width + im2.width, im1.height))
+#         dst.paste(im1, (0, 0))
+#         dst.paste(im2, (im1.width, 0))
+#         return dst
+    
+#     def merge_studies(df):
+#         """ 
+#         Helper function to prepare mimic. 
+#         Helper function to iterate over the mimic dataset and either brake
+#         or concatenate images that correspond to the same study. This function 
+#         is to be called as follows: "df.groupby('study_id').map(merge_studies)"
+        
+        
+        
+#         """
+#         global counter
+#         global times
+
+#         tick=time.time()
+#         # Get the names of the images and the study they belong to. 
+#         img_names=df['dicom_id'].to_list()
+#         study_path=df['path'].to_list()[0] # The path here is still not relative to the 
+#                                            # data folder, it will be modified in the load 
+#                                            # report section (comments)
+#         study_id=str(df.study_id.to_list()[0])
+
+#         if len(df)>1:
+#         # If there is more than one image in this study:
+#             # print(study_path)
+#             full_img_paths=[]
+
+#             #Construct the paths of the images that belong to the same study. 
+#             for img_name in img_names:
+#             # For images with that belong to the same study
+#                 full_img_path='../data/raw/physionet.org/files/mimic-cxr-jpg/2.0.0/'+study_path[:-4]+'/'+img_name+'.jpg'
+#                 full_img_paths.append(full_img_path)
+#             # print(full_img_paths)
+
+
+#             # Concatenate the images of the same study together. 
+#             while len(full_img_paths)>1:
+#                 img1=Image.open(full_img_paths.pop(0))
+#                 img2=Image.open(full_img_paths.pop(0))
+#                 concat_path='../data/raw/mimic_fusions/'+study_id+'.jpg'
+#                 concat=get_concat_h(img1,img2).save(concat_path)
+#                 full_img_paths.append(concat_path)
+
+#         # Find the report and labels: Since all of the images in the input df belong to one 
+#         # study, they must have the same report and labels
+
+#         # Load report into the contesnts variable
+#         full_study_path='../data/raw/physionet.org/files/mimic-cxr/2.0.0/'+study_path
+#         try:
+#             with open(full_study_path) as f:
+#                 contents = f.readlines()
+#         except:
+#             print('problems reading\n'+full_study_path)
+#             contents=[]
+#         contents=''.join(contents).strip()
+#         report = contents
+
+#         # Load the labels into a list
+#         label_cols=['Atelectasis', 'Cardiomegaly',
+#                    'Consolidation', 'Edema', 'Enlarged Cardiomediastinum', 'Fracture',
+#                    'Lung Lesion', 'Lung Opacity', 'No Finding', 'Pleural Effusion',
+#                    'Pleural Other', 'Pneumonia', 'Pneumothorax', 'Support Devices']
+
+#         labels=df[label_cols].iloc[0].to_list()
+
+
+#         # Make a df with all of the samples for this study:
+#         # Samples will have 3 categories: 
+#         #     multi: images in this category are the result of the concatenation of
+#         #         images of the same study and have only one asociated label and report. 
+#         #     unique: images in this category are part of a study that only had one 
+#         #         image as part of it and have only one asociated label and report. 
+#         #     broken: images in this category belong to a study that had more than one
+#         #         image in it but they were broken down into individual examples with
+#         #         repeated information (labels and report) for each of them.  
+
+#         rows=[]
+#         # Make the multi type row
+#         if len(df)>1:
+#             multi_row=[concat_path]+labels+[report]+['multi'] # 1 row for merged images
+#             rows.append(multi_row)
+
+#         # Make the broken type rows
+#             paths=[]
+#             for img_name in img_names:
+#             # For images with that belong to the same study
+#                 path='../data/raw/physionet.org/files/mimic-cxr-jpg/2.0.0/'+study_path[:-4]+'/'+img_name+'.jpg'
+#                 broken_row=[path]+labels+[report]+['broken']
+#                 rows.append(broken_row)
+#         # Make the unique type row
+#         if len(df)==1:
+
+#             #print(study_path)
+#             img_path='../data/raw/physionet.org/files/mimic-cxr-jpg/2.0.0/'+study_path[:-4]+'/'+img_names[0]+'.jpg'
+#             unique_row = [img_path]+labels+[report]+['unique']
+#             rows.append(unique_row)
+#             # print(unique_row)
+
+#         # Make a final dataframe with all types of rows.
+#         rows_df=pd.DataFrame(rows,columns=['path']+label_cols+['report','study_type'])
+#         # rows_df['study_id']=study_id
+
+
+#         # Calculate and show remaining time to finish computing
+#         counter = counter-1
+#         tock=time.time()
+#         times.append(tock-tick)
+#         print('Remaining time: {}'.format(str(datetime.timedelta(seconds=counter*np.mean(times)))))
+    
+#         return rows_df
     
 
 
 
 
-    reports_path='../data/raw/physionet.org/files/mimic-cxr/2.0.0/cxr-study-list.csv'
-    labels_path='../data/raw/physionet.org/files/mimic-cxr-jpg/2.0.0/mimic-cxr-2.0.0-chexpert.csv'
-    images_path= '../data/raw/physionet.org/files/mimic-cxr-jpg/2.0.0/mimic-cxr-2.0.0-split.csv'
+#     reports_path='../data/raw/physionet.org/files/mimic-cxr/2.0.0/cxr-study-list.csv'
+#     labels_path='../data/raw/physionet.org/files/mimic-cxr-jpg/2.0.0/mimic-cxr-2.0.0-chexpert.csv'
+#     images_path= '../data/raw/physionet.org/files/mimic-cxr-jpg/2.0.0/mimic-cxr-2.0.0-split.csv'
 
-    # load dfs
-    reports=pd.read_csv(reports_path)
-    labels=pd.read_csv(labels_path)
-    images=pd.read_csv(images_path)
+#     # load dfs
+#     reports=pd.read_csv(reports_path)
+#     labels=pd.read_csv(labels_path)
+#     images=pd.read_csv(images_path)
     
-    # Merge datasets to have all images corresponding to each study.
-    merged_inner = pd.merge(left=reports,how='inner', right=labels, on='study_id',validate='one_to_one' )
-    merged_o_m= pd.merge(left=merged_inner,how='inner',right=images,on='study_id',validate='one_to_many')
+#     # Merge datasets to have all images corresponding to each study.
+#     merged_inner = pd.merge(left=reports,how='inner', right=labels, on='study_id',validate='one_to_one' )
+#     merged_o_m= pd.merge(left=merged_inner,how='inner',right=images,on='study_id',validate='one_to_many')
     
 
-    os.makedirs('../data/raw/mimic_fusions',exist_ok=True)
-    global counter
-    global times
-    counter=len(merged_o_m.groupby(['study_id']).count())
-    times=[]
-    merged_o_m.groupby(['study_id']).apply(merge_studies).reset_index(drop=True).to_csv('..data/intermediate/inter_mimic.csv')
+#     os.makedirs('../data/raw/mimic_fusions',exist_ok=True)
+#     global counter
+#     global times
+#     counter=len(merged_o_m.groupby(['study_id']).count())
+#     times=[]
+#     merged_o_m.groupby(['study_id']).apply(merge_studies).reset_index(drop=True).to_csv('..data/intermediate/inter_mimic.csv')
     
