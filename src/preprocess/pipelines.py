@@ -20,12 +20,8 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 import tensorflow_datasets as tfds
 
-
-    
-
 def make_pipeline(inter_dataset_path,
-                  image_size=(299, 299),downscale=True,
-                  shuffle=True,
+                  image_size=(299, 299),
                   seed=1,fractions=[0.70,0.15,0.15]):
     """
     Generates model_ready training data.
@@ -34,8 +30,6 @@ def make_pipeline(inter_dataset_path,
     and builds a dictionary with keys, CLIP, labeling, captioning. The values
     are the datasets in tensorflow format, necessary to run each of the
     pretraining tasks.
-
-
 
 
     Args:
@@ -70,7 +64,7 @@ def make_pipeline(inter_dataset_path,
     # Shuffle dataset
     if shuffle:
         df=df.sample(frac=1,random_state=seed).reset_index()
-    #Split into train,valid and split
+    #Split into train,valid and test splits
     n=len(df)
     train_n = int(fractions[0]*n) # Number of samples in training set
     val_n = int(fractions[1]*n) # Number of samples in val set
@@ -118,6 +112,7 @@ def make_pipeline(inter_dataset_path,
     final_datasets=[]
     image_paths_list=[]
     captions_list=[]
+    
     for df in [train_df,val_df,test_df]:
     # Make a loop for each train, val, and test split. 
     

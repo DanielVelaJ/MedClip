@@ -243,140 +243,119 @@ def medpix():
     # Read the raw df
     path = '../data/raw/medpix/Dataset_MedPix_V1.xlsx'
     df = pd.read_excel(path)
-    # (1) and (2) Eliminate rows where Image_Title has single numbers and
-    # eliminate rows where title has word figure , considering that it has
-    # either the word 'Figure',  'Film' or 'Infection'
-    filter1_2 = (
-        (df['Image_Title'].str.contains('Figure', na=False)) |
-        (df['Image_Title'].str.contains('Film', na=False)) |
-        (df['Image_Title'].str.contains('Infection', na=False)) |
-        (df['Image_Title'].str.contains('Replace', na=False))
-    )
 
-    df.drop(index=df[filter1_2].index, inplace=True)
+    # Grab useful columns
+    useful_cols=['ID','Plane',
+                 'Core_Modality','Full_Modality',
+                 'Findings','Case_Diagnosis','Location']
+    df=df[useful_cols]
 
-    # (3)Eliminate rows where the title has the string "Dermatology Seminar"
-    filter3 = (
-        (df['Image_Title'].str.contains('Dermatology')) &
-        (df['Image_Title'].str.contains('Seminar'))
-    )
+    # Rename columns
+    renamings={'ID':'Path',
+               'Full_Modality':'Modality',
+              'Case_Diagnosis':'Impression',
+              'Location':'Anatomy'}
+    df.rename(columns=renamings,inplace=True)
+    # Now the dataframe contains columns 
+    #['Path', 'Plane', 'Core_Modality', 'Modality', 'Findings', 'Impression',
+    # 'Anatomy']
 
-    df.drop(index=df[filter3].index, inplace=True)
 
-    # (4)Eliminate where diagnosis says New case builder
-    filter4 = (
-        (df['Diagnosis'].str.contains('New', na=False)) &
-        (df['Diagnosis'].str.contains('case')) &
-        (df['Diagnosis'].str.contains('builder'))
-    )
-    df.drop(index=df[filter4].index, inplace=True)
+    # Drop rows with empty values
+    df = df.dropna() 
 
-    # (5) Eliminate where diagnosis says Unknown
-    filter5 = (df['Diagnosis'].str.contains('Unknown', na=False))
-    df.drop(index=df[filter5].index, inplace=True)
+    # CLEANING ON THE "PLANE" COLUMN-------------------------
+    # Consolidating synonims into single types.
+    df.Plane.replace('Transverse','Axial',inplace=True)
+    df.Plane.replace('Lateral','Sagittal',inplace=True)
+    df.Plane.replace('Frontal','Coronal',inplace=True)
 
-    #
-    # (7) Eliminate images that have no plane or modality or Findings or Location
-    # Editted so as to only filter findings column because Mamograph doesn't have core modality but is important. 
-    # Also, there is no need for view because ultrasound doesn't have view. 
-    df.dropna(axis='index', how='any',
-              subset=['Findings'], inplace=True)
-    df.dropna(axis='index', how='any',
-              subset=['Location'], inplace=True)
+    # Keep rows that have a plane values with a frequency higher than 100
+    valid_index=df.Plane.value_counts().index[df.Plane.value_counts()>100]
+    df=df.loc[df.Plane.isin(valid_index)]
 
-    # (8) Eliminate images where no full modality is provided.
-    df.dropna(axis='index', how='any', subset=['Full_Modality'], inplace=True)
+    # Drop whenever plane is equal to particular values.
+    df = df.loc[~df.Plane.isin(['NOS - Not specified', #
+                          'Other View (see caption)'])]
 
-    # (9) Do something about the rows containing "Replace with", perhaphs
-    # eliminate them.
-    filter9 = (
-        (df['Caption'].str.contains('Replace', na=False)) &
-        (df['Caption'].str.contains('with'))
-    )
-    df.drop(index=df[filter9].index, inplace=True)
+    # CLEANING ON THE "CORE_MODALITY" COLUMN-------------------
+    # Consolidating synonims under the same concept.
+    df.Core_Modality.replace('US-D','US',inplace=True)
+    df.Core_Modality.replace('CTA','AN',inplace=True)
+    df.Core_Modality.replace('MRA','AN',inplace=True)
+    df.Core_Modality.replace('Histology','HE',inplace=True)
+    df.Core_Modality.replace('PET','PET/NM',inplace=True)
+    df.Core_Modality.replace('NM','PET/NM',inplace=True)
+    df.Core_Modality.replace('PET-CT','PET/NM',inplace=True)
+    df.Core_Modality.replace('MRS','MR',inplace=True)
 
-    # (10) --> Check full modality and eliminate cases that contain the words
-    # 'Drawing', 'Not specified ', 'Not assigned' and 'Empty'
-    filterextra = (
-        (df['Full_Modality'].str.contains('Drawing', na=False)) |
-        (df['Full_Modality'].str.contains('Not', na=False)) |
-        (df['Full_Modality'].str.contains('Not', na=False))
-    )
-    df.drop(index=df[filterextra].index, inplace=True)
+    # Keep rows that have a Core_Modality values with a frequency higher than 100
+    valid_index=df.Core_Modality.value_counts().index[df.Core_Modality.value_counts()>100]
+    df=df.loc[df.Core_Modality.isin(valid_index)]
 
-    # (11) Filter so as to only have the relevant core modalities
-    groupings={'MR':['MR'],
-           'CT':['CT'],
-           'XR':['XR'],
-           'US':['US','US-D'],
-           'AN':['AN','CTA','MRA'],
-           'HE':['HE','Histology'],
-           'PET/NM':['PET','NM']
-          }
+    # Drop whenever plane is equal to particular values.
+    df = df.loc[~df.Core_Modality.isin(['NOS'])]
 
-    valid_mods=[]
-    for group,modalities in groupings.items(): 
-        for modality in modalities: 
-            valid_mods.append(modality)
-    df=df.loc[df.Core_Modality.isin(valid_mods)]
+    # CLEANING ON "FINDINGS" COLUMN------------------------------
+    # Eliminate rows that have a "findings" wordcount larger than 100 words. 
+    df["Number of Words"] = df["Findings"].apply(lambda n: len(n.split()))
+    df=df.loc[df['Number of Words']<=100]
 
-    # (12) Add primary modality group names
-    df['Modality_Group']=df.Core_Modality.apply(lambda x: assign_group(x,groupings))
-    
-    # (13) Add primary anatomy groups
-    anatomy_groupings={'Brain':['Brain and Neuro','Nerve, central'],
-                   'Musculoskeletal':['MSK - Musculoskeletal'],
-                   'Pulmonary':['Chest, Pulmonary (ex. Heart)'],
-                   'Breast':['Breast and Mammography'],
-                   'Abdomen':['Abdomen - Generalized','Gastrointestinal'],
-                   'Genitourinary':['Genitourinary'],
-                   'Spine':['Spine'],
-                   'Head and Neck':['Head and Neck (ex. orbit)','Eye and Orbit (exclude Ophthalmology)'],
-                   'Cardiovascular':['Vascular','Cardiovascular (inc. Heart)'],
-                  }
-    df['Anatomy_Group']=df.Location.apply(lambda x:assign_group(x,anatomy_groupings))
-    df.Anatomy_Group.fillna('Other',inplace=True)
-    
-    # Rename columns to fit standard
-    df.rename(columns={'Case_Diagnosis': 'Impression', 'Location': 'Anatomy',
-                       'Caption': 'Caption', 'ID': 'Path',
-                       'Case_URL': 'File URL', 'Image_URL': 'URL',
-                       'Full_Modality': 'Modality',
-                       'History': 'Patient history'}, inplace=True)
-    
-    
-    
-    
-    
-    
-    
-    # Take only relevant columns
-    df = df[['Path', 'Modality','Plane', 'Anatomy', 'Patient history',
-         'Findings', 'Impression', 'Diagnosis','Core_Modality',
-         'Modality_Group','Anatomy_Group']]
-    
-    # Save findings in different columns
-    df['Findings'] = df['Findings']
+    # CLEANING ON THE "ANATOMY" COLUMN--------------------------
+    # Consolidation
+    df.Anatomy.replace('Brain and Neuro','Brain',inplace=True)
+    df.Anatomy.replace('Nerve, central','Brain',inplace=True)
 
-    # Generate the Full caption to be predicted by models.
-    df['Full_Caption']=df.apply(lambda row: ('<start>'+
-                                     ' Modality: ' + str(row['Modality'])+
-                                         ' Plane: ' + str (row['Plane']) +
-                                     ' Anatomy: ' + str(row['Anatomy'])+
-                                     ' Findings: '+ str(row['Findings'])+
-                                     ' Impression: '+ str(row['Impression'])+' <end>') ,axis=1)
+    df.Anatomy.replace('MSK - Musculoskeletal','Musculoskeletal',inplace=True)
+    df.Anatomy.replace('Extremity - Please Select MSK','Musculoskeletal',inplace=True)
 
-    # Make paths relative to source
+    df.Anatomy.replace('Chest, Pulmonary (ex. Heart)','Pulmonary',inplace=True)
+
+    df.Anatomy.replace('Breast and Mammography','Breast',inplace=True)
+
+    df.Anatomy.replace('Abdomen - Generalized','Abdomen',inplace=True)
+    df.Anatomy.replace('Gastrointestinal','Abdomen',inplace=True)
+
+    df.Anatomy.replace('Head and Neck (ex. orbit)','Head and Neck',inplace=True)
+    df.Anatomy.replace('Eye and Orbit (exclude Ophthalmology)','Head and Neck',inplace=True)
+
+    df.Anatomy.replace('Vascular','Cardiovascular',inplace=True)
+    df.Anatomy.replace('Cardiovascular (inc. Heart)','Cardiovascular',inplace=True)
+
+    df.Anatomy.replace('Multisystem','Generalized',inplace=True)
+
+    # Keep rows that have Anatomy values with a frequency higher than 200
+    valid_index=df.Anatomy.value_counts().index[df.Anatomy.value_counts()>200]
+    df=df.loc[df.Anatomy.isin(valid_index)]
+
+    # CLEANING THE IMPRESSIONS COLUMN---------------------
+    # Keep impressions with at most 30 words.
+    df["Number of Words"] = df["Impression"].apply(lambda n: len(n.split()))
+    df=df.loc[df['Number of Words']<=30]
+
+    # Eliminate the Number or words column
+    df.drop(columns='Number of Words').count()
+
+    # CONVERT THE PATH COLUMN INTO THE COMPLETE PATHS--------------------
     prefix = '../data/raw/medpix/Images/'
     suffix = '.jpg'
     df.Path = prefix+df.Path.astype(str)+suffix
-    
-    # Check that the images exist or otherwise eliminate them 
+
+    # CREATE THE FULL CAPTIONS COLUMN-------------------------------------
+    df['Full_Caption']=df.apply(lambda row: ('<start>'+
+                                             ' Core Modality:'+ str(row['Core_Modality'])+
+                                             ' Modality: ' + str(row['Modality'])+
+                                             ' Plane: ' + str (row['Plane']) +
+                                             ' Anatomy: ' + str(row['Anatomy'])+
+                                             ' Findings: '+ str(row['Findings'])+
+                                             ' Impression: '+ str(row['Impression'])+' <end>') ,axis=1)
+
+    # CHECK THAT WE ARE ABLE TO OPEN IMAGES POINTED BY THE PATH COLUMN------------------
     bad_images=check_images(df.Path.to_list())
     print('listing bad images')
     print(bad_images)
     print(f'there are a total of {len(bad_images)} bad images')
-    df=df.loc[~df.Path.isin(bad_images)]
+    df=df.loc[~df.Path.isin(bad_images)] # eliminate rows with bad images from dataframe
     df.to_csv(save_path)
     return
 
