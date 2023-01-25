@@ -85,8 +85,11 @@ def build_pipeline(inter_dataset_path='../data/intermediate/inter_medpix.csv',
     # If we are not using the chexpert dataset
     if 'chexpert' not in inter_dataset_path:
 
-        uniques=df[~df.duplicated('Full_Caption')]   # unique values
-        duplicated=df[df.duplicated('Full_Caption')] # duplicated values
+        uniques=df[~df.duplicated('Caption',keep=False)]   # unique values
+        duplicated=df[df.duplicated('Caption',keep=False)] # duplicated values
+        # Output for debugging duplicated captions
+        uniques.to_csv('uniques.csv')
+        duplicated.to_csv('duplicated.csv')
 
         # If there are enough unique values to fill the validation and test sets:
         if len(uniques)>=(val_n+test_n):
@@ -121,3 +124,105 @@ def build_pipeline(inter_dataset_path='../data/intermediate/inter_medpix.csv',
                 } 
     return pipeline
     
+def build_coco_pipeline(downscale=False,image_size=(299,299)):
+    """
+    Generates model_ready training data from the coco dataset.
+
+    Takes the tensorflow datasets instance of the "coco captions" dataset
+    and builds a dictionary with keys, 'CLIP' and 'captioning'. The values
+    are the datasets (in tensorflow format), necessary to run each of the
+    pretraining tasks.
+
+
+
+
+    Args:
+        downscale(bool,optional): Whether to divide image values by 255. 
+            Defaults to True.
+        image_size(touple,optional): Size used to reshape images. Defaults to 
+            (299,299)
+    
+
+    Returns:
+        datasets_dict(dictionary): A dictionary containing tensorflow datasets.
+            The key CLIP contains a tf dataset consisting of elements:
+                ({image,text},)
+            The key captioning contains a tf dataset consisting of elements:
+                (image,caption)
+            
+            There is also a dataset which includes the image paths for each 
+            train, val and test split. 
+            
+
+     """
+    print('Loading coco...')
+    print('remember coco dataset has 5 captions per image so',
+          ' the value for the "text" key will be a (5,) string array.')
+    
+    # Load the dataset and it's info from tfds.
+    data,info = tfds.load(name='coco_captions',with_info=True)
+    
+    # Obtain training images, training captions and training image paths. 
+    train_imgs = data['train'].map(lambda x:get_coco_image(x,downscale,image_size), 
+                                 num_parallel_calls=tf.data.AUTOTUNE)
+    train_capts = data['train'].map(get_coco_capts,num_parallel_calls=tf.data.AUTOTUNE)
+    train_img_paths=data['train'].map(get_coco_img_paths,num_parallel_calls=tf.data.AUTOTUNE)
+
+     # Obtain validation images, captions and image paths. 
+    val_imgs = data['val'].map(lambda x:get_coco_image(x,downscale,image_size), 
+                                 num_parallel_calls=tf.data.AUTOTUNE)
+    val_capts = data['val'].map(get_coco_capts,num_parallel_calls=tf.data.AUTOTUNE)
+    val_img_paths=data['val'].map(get_coco_img_paths,num_parallel_calls=tf.data.AUTOTUNE)
+
+    # Obtain test images, captions and image paths
+    test_imgs = data['test'].map(lambda x:get_coco_image(x,downscale,image_size), 
+                                 num_parallel_calls=tf.data.AUTOTUNE) 
+    test_capts=data['test'].map(get_coco_capts,num_parallel_calls=tf.data.AUTOTUNE)
+    test_img_paths=data['test'].map(get_coco_img_paths,num_parallel_calls=tf.data.AUTOTUNE)
+
+    # Zip images and captions together 
+    train_data_captioning=tf.data.Dataset.zip((train_imgs,train_capts)).\
+                map(to_dict,num_parallel_calls=tf.data.AUTOTUNE)
+    val_data_captioning=tf.data.Dataset.zip((val_imgs,val_capts)).\
+                map(to_dict,num_parallel_calls=tf.data.AUTOTUNE)
+    test_data_captioning=tf.data.Dataset.zip((test_imgs,test_capts)).\
+                map(to_dict,num_parallel_calls=tf.data.AUTOTUNE)
+
+
+    dataset_dictionary={
+                          'captioning':{
+                                        'train': train_data_captioning,
+                                        'val': val_data_captioning,
+                                        'test': test_data_captioning,
+                                        'train_img_paths': train_img_paths,
+                                        'val_img_paths': val_img_paths,
+                                        'test_img_paths': test_img_paths,
+                                        'train_captions': train_capts,
+                                        'val_captions': val_capts,
+                                        'test_captions': test_capts
+                                      }
+                         }
+    return dataset_dictionary
+
+def get_coco_image(dataset,downscale=True,image_size=(299,299)):
+    """Map function to get an array of images from the coco dataset."""
+    img=dataset['image']
+    
+    img=tf.image.resize(img,image_size)
+    if downscale:
+        img=img/255
+    return img
+def get_coco_capts(dataset):
+    """Map function to get an array of captions for every image. 
+    
+    Coco dataset uses 5 captions per image for most images but some have 6 or 7 
+    we will crop them to 5 for ease of implementation of batching in the pipeline. 
+    Otherwise tensorflow cannot batch different sizes. """
+    
+    # Add start and end tokens
+    captions='<start> '+ dataset['captions']['text'][0:5] + ' <end>'
+    return captions
+
+def get_coco_img_paths(dataset):
+    """Map function to get the image paths from original coco dataset."""
+    return dataset['image/filename']

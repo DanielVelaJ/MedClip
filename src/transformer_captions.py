@@ -714,3 +714,49 @@ class CaptioningTransformer(tf.keras.Model):
         
     
 
+def instantiate_captioner(params,data_pipeline):
+    """
+    Instantiates a captioning model. 
+    
+    Args: 
+        params(dict): A dictionary of parameters for the model 
+        data_pipeline(pipeline): A pipeline made by the make_pipeline function
+    Returns 
+        model(tf model): The captioner model
+    """
+  
+    
+
+    tokenizer_data=data_pipeline['captioning']['train_captions']              # Get the captions to fit tokenizer
+
+
+    text_encoder=MatrixTextEncoder(seq_len=params['SEQ_LEN'],                # Make text encoder
+                                   embedding_dim=params['EMBEDDING_DIM'],
+                                   tokenizer_data=tokenizer_data,
+                                   projection_trainable=True,
+                                   backbone_trainable=True)
+    
+    image_encoder=make_image_encoder(params['IMG_SIZE'],                      # Make image encoder
+                                     backbone=params['IMG_BACKBONE'],
+                                     trainable= params['IMG_TRAINABLE'])
+    
+    transformer_encoder=TransformerEncoder(params['SEQ_LEN'],                 # Make transformer encoder
+                                           params['EMBEDDING_DIM'],
+                                           params['NUM_HEADS'], 
+                                           params['DROPOUT'])
+    
+    transformer_decoder=TransformerDecoder(params['NUM_HEADS'],             # Make transformer decoder
+                                           params['EMBEDDING_DIM'],
+                                           params['DROPOUT'])
+
+   
+    VOCAB_SIZE=text_encoder.vocabulary_size   
+   
+    model=CaptioningTransformer(image_encoder,                             # Build the captioner model 
+                                text_encoder,             
+                                transformer_encoder,
+                                transformer_decoder,
+                                params['EMBEDDING_DIM'],
+                                params['NUM_HEADS'],
+                                VOCAB_SIZE,captions_per_image=1)
+    return model

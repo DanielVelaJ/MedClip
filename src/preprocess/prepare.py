@@ -212,7 +212,8 @@ def chexpert():
                                          ' Modality: ' + str(row['Modality'])+
                                          ' Anatomy: ' + str(row['Anatomy'])+
                                          ' Findings: '+ str(row['Findings'])+
-                                         ' Impression: '+ str(row['Impression'])+' <end>') ,axis=1)
+                                         # ' Impression: '+ str(row['Impression'])+
+                                             ' <end>') ,axis=1)
     
     # Make paths realtive to src
     prefix = '../data/raw/chexpert/'
@@ -245,9 +246,13 @@ def medpix():
     df = pd.read_excel(path)
 
     # Grab useful columns
+    # useful_cols=['ID','Plane',
+    #              'Core_Modality','Full_Modality',
+    #              'Findings','Case_Diagnosis','Location']
     useful_cols=['ID','Plane',
                  'Core_Modality','Full_Modality',
-                 'Findings','Case_Diagnosis','Location']
+                 'Caption','Case_Diagnosis','Location']
+    
     df=df[useful_cols]
 
     # Rename columns
@@ -257,7 +262,7 @@ def medpix():
               'Location':'Anatomy'}
     df.rename(columns=renamings,inplace=True)
     # Now the dataframe contains columns 
-    #['Path', 'Plane', 'Core_Modality', 'Modality', 'Findings', 'Impression',
+    #['Path', 'Plane', 'Core_Modality', 'Modality', 'Caption', 'Impression',
     # 'Anatomy']
 
 
@@ -288,6 +293,9 @@ def medpix():
     df.Core_Modality.replace('NM','PET/NM',inplace=True)
     df.Core_Modality.replace('PET-CT','PET/NM',inplace=True)
     df.Core_Modality.replace('MRS','MR',inplace=True)
+    
+    # Renaming interventional instances to INT
+    df.Core_Modality.replace('Interventional','INT',inplace=True) 
 
     # Keep rows that have a Core_Modality values with a frequency higher than 100
     valid_index=df.Core_Modality.value_counts().index[df.Core_Modality.value_counts()>100]
@@ -298,7 +306,7 @@ def medpix():
 
     # CLEANING ON "FINDINGS" COLUMN------------------------------
     # Eliminate rows that have a "findings" wordcount larger than 100 words. 
-    df["Number of Words"] = df["Findings"].apply(lambda n: len(n.split()))
+    df["Number of Words"] = df["Caption"].apply(lambda n: len(n.split()))
     df=df.loc[df['Number of Words']<=100]
 
     # CLEANING ON THE "ANATOMY" COLUMN--------------------------
@@ -333,7 +341,7 @@ def medpix():
     df["Number of Words"] = df["Impression"].apply(lambda n: len(n.split()))
     df=df.loc[df['Number of Words']<=30]
 
-    # Eliminate the Number or words column
+    # Eliminate the Number of words column
     df.drop(columns='Number of Words').count()
 
     # CONVERT THE PATH COLUMN INTO THE COMPLETE PATHS--------------------
@@ -343,12 +351,13 @@ def medpix():
 
     # CREATE THE FULL CAPTIONS COLUMN-------------------------------------
     df['Full_Caption']=df.apply(lambda row: ('<start>'+
-                                             ' Core Modality:'+ str(row['Core_Modality'])+
+                                             ' Core Modality: '+ str(row['Core_Modality'])+
                                              ' Modality: ' + str(row['Modality'])+
                                              ' Plane: ' + str (row['Plane']) +
                                              ' Anatomy: ' + str(row['Anatomy'])+
-                                             ' Findings: '+ str(row['Findings'])+
-                                             ' Impression: '+ str(row['Impression'])+' <end>') ,axis=1)
+                                             ' Findings: '+ str(row['Caption'])+
+                                             #' Impression: '+ str(row['Impression'])+
+                                             ' <end>') ,axis=1)
 
     # CHECK THAT WE ARE ABLE TO OPEN IMAGES POINTED BY THE PATH COLUMN------------------
     bad_images=check_images(df.Path.to_list())
