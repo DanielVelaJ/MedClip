@@ -88,8 +88,8 @@ def build_pipeline(inter_dataset_path='../data/intermediate/inter_medpix.csv',
         uniques=df[~df.duplicated('Caption',keep=False)]   # unique values
         duplicated=df[df.duplicated('Caption',keep=False)] # duplicated values
         # Output for debugging duplicated captions
-        uniques.to_csv('uniques.csv')
-        duplicated.to_csv('duplicated.csv')
+        # uniques.to_csv('uniques.csv')
+        # duplicated.to_csv('duplicated.csv')
 
         # If there are enough unique values to fill the validation and test sets:
         if len(uniques)>=(val_n+test_n):
@@ -124,7 +124,7 @@ def build_pipeline(inter_dataset_path='../data/intermediate/inter_medpix.csv',
                 } 
     return pipeline
     
-def build_coco_pipeline(downscale=False,image_size=(299,299)):
+def build_coco_pipeline(downscale=False,image_size=(299,299),tokenizer=None):
     """
     Generates model_ready training data from the coco dataset.
 
@@ -187,6 +187,8 @@ def build_coco_pipeline(downscale=False,image_size=(299,299)):
                 map(to_dict,num_parallel_calls=tf.data.AUTOTUNE)
     test_data_captioning=tf.data.Dataset.zip((test_imgs,test_capts)).\
                 map(to_dict,num_parallel_calls=tf.data.AUTOTUNE)
+    
+
 
 
     dataset_dictionary={
@@ -226,3 +228,9 @@ def get_coco_capts(dataset):
 def get_coco_img_paths(dataset):
     """Map function to get the image paths from original coco dataset."""
     return dataset['image/filename']
+
+def tokenize(ds_row,tokenizer):
+    tokens=tokenizer.tokenize(ds_row['text'])
+    return {'image':ds_row['image'],
+           'text':ds_row['text'],
+           'tokens':tokens}

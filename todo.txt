@@ -1,2 +1,0 @@
-Make sure that image encoders in all pretrainer methods actually have 
-images in the format that the image backbone needs!
