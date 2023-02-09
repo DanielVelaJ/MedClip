@@ -34,10 +34,14 @@ class CaptioningCallback(tf.keras.callbacks.Callback):
         file_writer = tf.summary.create_file_writer(self.log_dir) 
         with file_writer.as_default():
             tf.summary.text("model_config", self.pretty_json(self.model_config), step=0)
+            
         # Save configuration file.
-        save_path='../model_configs/'+self.model_config['model_name']+'.config'
-        with open(save_path, 'wb') as fp:
-            pickle.dump(self.model_config, fp)
+#         os.makedirs(self.model_path,exist_ok=True)
+#         config_path=self.model_path+'/'+self.model_path.split('/')[-1]+'.config'
+        
+#         with open(config_path, 'wb') as fp:
+#             pickle.dump(self.model_config, fp)
+            
     def on_epoch_end(self, epoch,logs):
         ''' 
         Log bleu metrics (not implemented yet).

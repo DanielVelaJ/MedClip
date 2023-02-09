@@ -7,7 +7,7 @@ directory as .csv files.
 
 """
 
-import preprocess.prepare as prepare
+import prepare as prepare
 import os
 
 option= input('Prepare chexpert? (enter option [y] , [n]):\n')

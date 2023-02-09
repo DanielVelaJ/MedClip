@@ -1,6 +1,6 @@
 # Todo: Finish the load_captioning_model function
-from models.CaptioningTransformer import CaptioningTransformer
-from preprocess.pipelinesV2 import build_pipeline, build_coco_pipeline
+from models.CaptioningTransformers import CaptioningTransformer
+from pipelines import build_pipeline, build_coco_pipeline
 import tensorflow as tf
 import re
 import numpy as np
@@ -12,13 +12,15 @@ import json
 import pandas as pd
 import os
 import pickle
+import gc
 
 
 
-def load_captioning_model(model_name):
+def load_captioning_model(model_path):
     
     # Obtain model configuration from config file.
-    config_path='../model_configs/'+model_name+'.config'
+    
+    config_path=model_path+'/'+model_path.split('/')[-1]+'.config'
     with open(config_path, 'rb') as fp:
         config = pickle.load(fp)
 
@@ -43,5 +45,6 @@ def load_captioning_model(model_name):
     model.fit(inputs.batch(1))
 
     # Load weights into model
-    model.load_weights('../models/'+model_name) 
+    weights_path=model_path+'/'+model_path.split('/')[-1]
+    model.load_weights(weights_path) 
     return model
