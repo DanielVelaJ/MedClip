@@ -351,6 +351,9 @@ class MatrixTextEncoder(TextEncoder):
         
 class AddLearntPositional(tf.keras.layers.Layer):
     def __init__(self,sequence_length,embedding_dim,**kwargs):
+        """Add learnt positional encoding.
+        
+        """
         
         super().__init__(**kwargs)
        

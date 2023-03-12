@@ -6,17 +6,26 @@ import sklearn
 from datasets import load_metric
 import pickle
 import matplotlib.pyplot as plt
+from openpyxl.styles.borders import Border, Side
+import openpyxl
+from openpyxl.styles import Alignment, Font
 
 class Evaluate(object):
     """
     This class uses a saved model (a folder with .index and .vocabulary, .config)
-    and its already computed predictions (model_test_predictions.csv) to compute
-    extracted labels, confusion matrixes and evaluation scores. 
+    and its already computed predictions (model_test_predictions.xslx) to compute
+    extracted labels, confusion matrixes and evaluation scores.
+    
+    The class purpose is to:
+    
     
     
     
     """
     def __init__(self,model_path):
+        """
+        
+        """
         super().__init__()
         
         # Setting paths for evaluation------------------------------------------
@@ -24,7 +33,7 @@ class Evaluate(object):
         # Path to the .config file inside the model folder
         self.config_path=model_path+'/'+model_path.split('/')[-1]+'.config'
         # Path where to save the predictions 
-        self.predictions_path=model_path+'/'+model_path.split('/')[-1]+'_test_predictions.csv'
+        self.predictions_path=model_path+'/'+model_path.split('/')[-1]+'_test_predictions.xlsx'
         # Path were to save the labels that will be extracted from the 
         # predictions.
         self.labels_path=model_path+'/'+model_path.split('/')[-1]+'_test_labels.csv'
@@ -33,7 +42,7 @@ class Evaluate(object):
         # Path where to save the test metrics.
         self.scores_path=model_path+'/'+model_path.split('/')[-1]+'_test_metrics.csv'
         # The df with all the predictions. 
-        self.predictions=pd.read_csv(self.predictions_path)
+        self.predictions=pd.read_excel(self.predictions_path)
         # We initialize the scores dictionary
         self.scores={}
          
@@ -216,9 +225,85 @@ class Evaluate(object):
     def evaluate_all(self):
         """"Run evaluation metrics and save results."""
         if self.config['dataset']=='medpix':
+            print('Making confusion matrixes.')
             self.confusion_matrixes()
             self.classification()
+        print('Calculating global bleu scores.')
         self.bleu()
+        print('Calculating global rouge scores.')
         self.rouge()
+        print('Calculating individual bleu and rouge scores.')
+        self.evaluate_individual_predictions()
+    
+    def evaluate_individual_predictions(self):
+        """ Adds  bleu and rouge columns with scores for each perediction in the 
+        predictions excel."""
+        df=self.predictions
+        reference_cols=[col for col in df.columns.to_list() if 'true' in col]
+        bleu=load_metric('sacrebleu')
+        rouge=load_metric('rouge')
+        bleus=[]
+        rouges=[]
+        # Compute metrics for each row in the dataframe
+        for index, row in df.iterrows():
+            predictions=[row['predicted_caption']]
+            references=[row[reference_cols].to_list()]
+            # compute metrics
+            bleu_dict=bleu.compute(predictions=predictions,
+                                   references=references)
+            rouge_dict=rouge.compute(predictions=predictions,
+                                   references=references)
+            # append relevant scores
+            bleus.append(bleu_dict['score'])
+            # rouges.append
+            rouges.append(rouge_dict['rougeL'].mid.fmeasure)
+
+        wb = openpyxl.load_workbook(self.predictions_path) # open excel file
+        ws = wb.active # Select the active worksheet
+
+        # Get the letter of the column after last filled column and the next one
+        col_letter_bleu = openpyxl.utils.cell.get_column_letter(ws.max_column+1)
+        col_letter_rouge = openpyxl.utils.cell.get_column_letter(ws.max_column+2)
+        # Add the column title for bleu
+        ws[col_letter_bleu+str(1)]='bleu' # Set column title
+        ws[col_letter_bleu+str(1)].font = Font(bold=True) # Set bold font
+        ws[col_letter_bleu+str(1)].alignment = Alignment(horizontal='center') # Center text
+        # Add borders
+        thin_border = Border(left=Side(style='thin'), 
+                     right=Side(style='thin'), 
+                     top=Side(style='thin'), 
+                     bottom=Side(style='thin'))
+        ws[col_letter_bleu+str(1)].border = thin_border
+
+        # Add column title for rouge
+        ws[col_letter_rouge+str(1)]='rougeL_f_mid' # Set column title
+        ws[col_letter_rouge+str(1)].font = Font(bold=True) # Set bold font
+        ws[col_letter_rouge+str(1)].alignment = Alignment(horizontal='center') # Center text
+        # Add borders
+        thin_border = Border(left=Side(style='thin'), 
+                     right=Side(style='thin'), 
+                     top=Side(style='thin'), 
+                     bottom=Side(style='thin'))
+        ws[col_letter_rouge+str(1)].border = thin_border
+
+        # Add scores to the bleu column iteratively
+        for i,score in enumerate(bleus):
+        # For every score
+            # We add two to the row because excel index starts at 1 and we must skip
+            # the column titles row.
+            row = i+2 
+            cell_index = col_letter_bleu+str(row) # Get index in LetterNumber format
+            ws[cell_index]=score # Write score to cell
+
+        # Add scores to the rouge column iteratively
+        for i,score in enumerate(rouges):
+        # For every score
+            # We add two to the row because excel index starts at 1 and we must skip
+            # the column titles row.
+            row = i+2 
+            cell_index = col_letter_rouge+str(row) # Get index in LetterNumber format
+            ws[cell_index]=score # Write score to cell
+
+        wb.save(self.predictions_path)
         
         

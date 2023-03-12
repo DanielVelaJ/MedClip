@@ -66,9 +66,13 @@ class KerasTokenizer(CustomTokenizer):
         return final_string 
     
     def build_vocabulary(self,tokenizer_data):
-        """
+        """ Builds the tokenizer's internal vocabulary from tokenizer_data.
+        
         Args: 
-            tokenizer_data(list): list of all strings
+            tokenizer_data(list): list of all strings needed to build the 
+                vocabulary. Can also be an argument to tokenizer.adapt() from
+                the keras library.
+            
         """
         self.tokenizer.adapt(tokenizer_data)
         self.vocab_size = self.tokenizer.vocabulary_size()
@@ -95,7 +99,12 @@ class KerasTokenizer(CustomTokenizer):
         
         
     def save_vocabulary(self, model_path):
-        """Save a vocabulary to the vocabularies directory"""
+        """Save a vocabulary to the vocabularies directory. 
+        
+        Args:
+            model_path (str): Path to the folder where the .vocabulary will live
+            
+         """
         os.makedirs(model_path, exist_ok=True)
         vocabulary_path=model_path+'/'+model_path.split('/')[-1]+'.vocabulary'
         with open(vocabulary_path, 'wb') as fp:
@@ -105,7 +114,12 @@ class KerasTokenizer(CustomTokenizer):
         
                              
     def load_vocabulary(self, model_path):
-        """Save a vocabulary to the vocabularies directory"""
+        """ Load vocabulary.
+        
+        Args:
+            model_path (str): Path to the folder where the .vocabulary file 
+                lives. 
+        """
         vocabulary_path=model_path+'/'+model_path.split('/')[-1]+'.vocabulary'
         with open(vocabulary_path, 'rb') as fp:
             vocabulary = pickle.load(fp)

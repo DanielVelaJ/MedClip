@@ -1,5 +1,6 @@
 from pipelines import build_pipeline, build_coco_pipeline
 import tensorflow as tf
+from tensorboard.plugins import projector
 import re
 import numpy as np
 import matplotlib.pyplot as plt
@@ -39,6 +40,16 @@ class Experiment(object):
         self.log_dir=log_dir
         self.tokenizer=None
         self.metric=config['metric']
+        
+        
+        
+        # create folder to contain experiment
+        os.makedirs(save_path,exist_ok=True) 
+        
+        # Initialize paths for experiments
+        self.learning_curves_path=self.save_path+'/'+'learning_curves.csv'
+        self.figures_path = self.save_path+'/'+self.save_path.split('/')[-1]+'_xx'
+        self.projections_path = self.save_path+'/'+'embedding_projections/'
         
     def init_pipeline(self):
         """ Load data pipeline to self.data"""
@@ -90,16 +101,16 @@ class Experiment(object):
         train_data = (self.data['captioning']['train']
                       .map(tokenize,num_parallel_calls=tf.data.AUTOTUNE)
                       .batch(batch_size)
-                      # .take(1)
+                      # .take(10)
                      )
         val_data = (self.data['captioning']['val']
                     .map(tokenize,num_parallel_calls=tf.data.AUTOTUNE)
                     .batch(batch_size)
-                    # .take(1)
+                    # .take(10)
                    )
         test_data = (self.data['captioning']['test']
                      .map(tokenize,num_parallel_calls=tf.data.AUTOTUNE)
-                     # .take(1)
+                     # .take(10)
                     )
         
         self.train_data=train_data
@@ -171,7 +182,7 @@ class Experiment(object):
         return 
     
     def create_and_train_model(self):
-        """Create the model and train it."""
+        """Create the model, train it and save history."""
         
         tf.keras.backend.clear_session()
         self.model=CaptioningTransformer(self.config)
@@ -184,11 +195,20 @@ class Experiment(object):
                                     validation_data=self.val_data,
                                     epochs=self.config['max_epochs'],
                                     callbacks=self.callbacks)
+        # Save history
+        d={'loss':self.history.history['loss'],
+           'val_loss':self.history.history['val_loss'],
+           'acc':self.history.history['acc'],
+           'val_acc':self.history.history['val_acc']}
+        
+        learning_curves=pd.DataFrame(d)
+        learning_curves.to_csv(self.learning_curves_path)
         
         return
     
     def plot_learning_curves(self):
-        fig_path=self.save_path+'/'+self.save_path.split('/')[-1]+'_xx'
+        
+        fig_path=self.figures_path
         
         figure=plt.figure(figsize=(9,6),dpi=100)
         epochs=len(self.history.history['loss'])
@@ -216,17 +236,53 @@ class Experiment(object):
     
     def make_predictions(self):
         """Make and save predictions over the test set."""
-        Predict.dataset_captions(self.test_data,
-                                 self.model,
-                                 self.tokenizer,
-                                 model_path=self.save_path
-                                )
+       
+        predict=Predict(dataset=self.test_data, 
+                        model_path=self.save_path)
+        
+        predict.dataset_captions(model=self.model,
+                         tokenizer=self.tokenizer,
+                         batch_size=32)
+        
+        predict.append_images()
         
     def evaluate_model(self):
         evaluate=Evaluate(self.save_path)
         evaluate.evaluate_all()
         self.results = evaluate.results
         pass
+    
+    def save_embedding_projections(self):
+        # Set up a logs directory, so Tensorboard knows where to look for files.
+        log_dir=self.projections_path
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+
+        # Save Labels separately on a line-by-line manner.
+        with open(os.path.join(log_dir, 'metadata.tsv'), "w") as f:
+            for subwords in self.tokenizer.vocabulary:
+                f.write("{}\n".format('_'+subwords+'_'))
+              # Fill in the rest of the labels with "unknown".
+            # for unknown in range(1, encoder.vocab_size - len(encoder.subwords)):
+            #     f.write("unknown #{}\n".format(unknown))
+            # f.write("flyingcomma\n")
+
+        # Save the weights we want to analyze as a variable. Note that the first
+        # value represents any unknown word, which is not in the metadata, here
+        # we will remove this value.
+        weights = tf.Variable(self.model.layers[1].variables[0].numpy())
+        # Create a checkpoint from embedding, the filename and key are the
+        # name of the tensor.
+        checkpoint = tf.train.Checkpoint(embedding=weights)
+        checkpoint.save(os.path.join(log_dir, "embedding.ckpt"))
+
+        # Set up config.
+        config = projector.ProjectorConfig()
+        embedding = config.embeddings.add()
+        # The name of the tensor will be suffixed by `/.ATTRIBUTES/VARIABLE_VALUE`.
+        embedding.tensor_name = "embedding/.ATTRIBUTES/VARIABLE_VALUE"
+        embedding.metadata_path = 'metadata.tsv'
+        projector.visualize_embeddings(log_dir, config)
     
     def run(self):
         print('Running experiment with the following configuration:')
@@ -243,6 +299,11 @@ class Experiment(object):
         self.create_and_train_model()
         print('Plotting learning curves...')
         self.plot_learning_curves()
+        
+        if isinstance(self.model, CaptioningTransformer):
+            print('Saving embedding projections...')
+            self.save_embedding_projections()
+            
         print('Making predictions...')
         self.make_predictions()
         print('Evaluating...')

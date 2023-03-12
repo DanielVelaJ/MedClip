@@ -9,6 +9,8 @@ wget -r -N -c -np --user danielvelaj --password Lucicaroro1! https://physionet.o
 
 wget -r -N -c -np --user danielvelaj --password Lucicaroro1! https://physionet.org/files/mimic-cxr-jpg/2.0.0/
 
+wget -r -N -c -np --user danielvelaj --password Lucicaroro1! https://physionet.org/files/mimic-cxr-jpg/2.0.0/
+
 
 # Now unzip gzip files
 # First go to directory

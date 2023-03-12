@@ -15,8 +15,7 @@ import os
 # The image encoder class
 class ImageEncoder(tf.keras.layers.Layer):
     def __init__(self,config):
-        """
-        Image encoder class. 
+        """Image encoder class. 
         
         The layer takes images and returns a sequence of vectors 
         corresponding to the last convolutional volume of the given 
@@ -28,6 +27,7 @@ class ImageEncoder(tf.keras.layers.Layer):
                 'img_backbone_trainable': whether the backbone is trainable
                 'img_size': the resolution of the image ex: (299,299,3)
                 'img_backbone': Currently only efficientnetB0 is implemented
+                
         """
         super().__init__()
         # Base attrobites 
@@ -70,7 +70,8 @@ class ImageEncoder(tf.keras.layers.Layer):
         
 class PositionalEncoder(tf.keras.layers.Layer):
     """A layer that adds positional encoding to a squence of embeddings."""
-    def __init__(self,config,seq_len,**kwargs):
+    
+    def __init__(self,config,seq_len,**kwargs):   
         """Initialize a positional encoder. 
         
         Creates an learnable embedding matrix to represent positions for
@@ -78,9 +79,11 @@ class PositionalEncoder(tf.keras.layers.Layer):
         square_root of the model dimension. 
         
         Args: 
-        config(dict): A configuration dictionary that must contain:
-            model_dim: The size of the embeddings. Typically 728.
-        sequence_length: The size of the sequence for positional encoding. 
+            config(dict): A configuration dictionary that must contain: 
+                model_dim: The size of the embeddings. Typically 728.
+            sequence_length: The size of the sequence for positional encoding. 
+        
+        
         """
         super().__init__(**kwargs)
         
@@ -109,16 +112,15 @@ class FeedForward(tf.keras.layers.Layer):
     
     A dense feed forward network that operates on each embedding individually. 
     It is composed by two linear layers with a gelu activation in between. 
+    
     """
     def __init__(self,config,**kwargs):
-        """Initializes layers for feedforward network. 
+        """Initializes layers for feedforward network.
         
-        Args: 
-            config(dict): A configuration dictionary that must contain: 
-                'intermediate_size': An int with the size of the intermediate
-                    layer. 
-                'model_dim': The dimension of the transformer embeddings.
-                'dropout': The dropout rate.                 
+        Args:
+            config (dict): A configuration dictionary.
+                dfadsf.
+                
         """
         super().__init__(**kwargs)
         self.linear_1 = tf.keras.layers.Dense(config['intermediate_size'],
@@ -155,7 +157,7 @@ class TransformerEncoder(tf.keras.layers.Layer):
         return(x)
     
 class FullEncoder(tf.keras.layers.Layer):
-    """" The full encoder containing the image encoder, positional encoder and 
+    """"The full encoder containing the image encoder, positional encoder and 
     transformer encoder"""
     def __init__(self,config,**kwargs):
         super().__init__(**kwargs)
@@ -176,8 +178,7 @@ class FullEncoder(tf.keras.layers.Layer):
 class TextEmbeddings(tf.keras.layers.Layer):
     
     def __init__(self,config,**kwargs):
-        """
-        Receive tokens, embedd them and positionally encode them. 
+        """Receive tokens, embedd them and positionally encode them. 
         
         Args: 
             config(dict): a configuration dictionary
@@ -228,7 +229,8 @@ class TransformerDecoder(tf.keras.layers.Layer):
         mha_2_out = self.mha_2( query=norm_1_out,
                        value=image_inputs,
                        key=image_inputs,
-                       attention_mask=padding_mask) 
+                       attention_mask=padding_mask
+                              ) 
         norm_2_out= self.layer_norm_2(mha_2_out+norm_1_out)
         
         ffw_out = self.feed_forward(norm_2_out)
@@ -261,7 +263,8 @@ class TransformerDecoder(tf.keras.layers.Layer):
     
 class FullDecoder(tf.keras.layers.Layer):
     def __init__(self,config,**kwargs):
-        """ 
+        """Make a full decoder with embeddings, transformer decoder and output layers. 
+        
         Combines the TextEmbeddings, TransformerDecoder and output layers to 
         form a full decoder that takes in images and texts and outputs probabilities
         of words in the vocabulary. 
@@ -315,8 +318,8 @@ class PreNormTransformerEncoder(tf.keras.layers.Layer):
         return(add_2_out)
 
 class PreNormFullEncoder(tf.keras.layers.Layer):
-    """" The full encoder containing the image encoder, positional encoder and 
-    transformer encoder"""
+    """"The full encoder containing the image encoder, positional encoder and 
+    transformer encoder."""
     def __init__(self,config,**kwargs):
         super().__init__(**kwargs)
         self.num_encoder_blocks=config['num_encoder_blocks']
@@ -365,7 +368,8 @@ class PreNormTransformerDecoder(tf.keras.layers.Layer):
         mha_2_out = self.mha_2( query=norm_2_out,
                                 value=image_inputs,
                                 key=image_inputs,
-                                attention_mask=padding_mask) 
+                               attention_mask=padding_mask
+                              ) 
         add_2_out = (mha_2_out+add_1_out)
         norm_3_out= self.layer_norm_3(add_2_out)   
         ffw_out = self.feed_forward(norm_3_out)
@@ -396,7 +400,8 @@ class PreNormTransformerDecoder(tf.keras.layers.Layer):
     
 class PreNormFullDecoder(tf.keras.layers.Layer):
     def __init__(self,config,**kwargs):
-        """ 
+        """Build a full decoder with embeddings, transformer decoder and output layer. 
+        
         Combines the TextEmbeddings, TransformerDecoder and output layers to 
         form a full decoder that takes in images and texts and outputs probabilities
         of words in the vocabulary. 
@@ -535,19 +540,19 @@ class CaptioningTransformer(tf.keras.Model):
         
         
     def calculate_loss(self, y_true, y_pred, mask):
-        """
-        Calculates the loss and masks it 
+        """Calculates the loss and masks it.
         
         Args:
-        y_true: Batch of tokens with dimension (None,seq_len-1)
-            (-1 because of the left shifting of the input sequence)
-        y_pred: A batch of probabilities
+            y_true (tensor): Batch of tokens with dimension (None,seq_len-1)
+                (-1 because of the left shifting of the input sequence)
+            y_pred (): A tensor of probabilities for the vocabulary distribution
+                it commonly has dimensions (batch_size, seq_len, vocab_size). 
         
         """
         # Get sparse categorical crossentropy loss
         # y_pred has dimensions (batch, seq_len,vocab_size)
         # y_true has dimensions (batch, seq_len)
-        loss = self.loss(y_true, y_pred) # (the loss function is configured in `compile()`)
+        loss = self.loss(y_true, y_pred) # (the loss function is configured in `compile()` )
         mask = tf.cast(mask, dtype=loss.dtype) # Cast mask from boolean to float.
         loss *= mask # Truncate loss where there are paddings
         loss= (tf.reduce_sum(loss) / tf.reduce_sum(mask)) # Get average loss for all non-pad positions.
@@ -555,9 +560,14 @@ class CaptioningTransformer(tf.keras.Model):
         return loss
     
     def calculate_accuracy(self, y_true, y_pred, mask):
+        """Calculates masked accuracy.
+        
+        Args: 
+            y_true (Tensor): A tensor of probabilities for the vocabulary distribution
+                it commonly has dimensions (batch_size, seq_len, vocab_size). 
+
         """
-        Calculates masked accuracy
-        """
+
         # Find matches between argmax of probabilities and y_true. 
         # argmax yields the index of the highest probability for next word. 
         accuracy = tf.equal(y_true, tf.argmax(y_pred, axis=2)) 

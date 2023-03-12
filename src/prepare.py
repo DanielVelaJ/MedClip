@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-This includes functions to make clean dataframes from zipfiles.
+This module contains functions to transform raw datasets inside the 
+:file:`MedClip/data/raw` folder into 
+:ref:`intermediate datasets <intermediate_datasets>` that are saved in the 
+:file:`MedClip/data/intermediate` directory. 
 
-This module includes functions to extract the zip files for each dataset
-after downloaded and to prepare dataframes containing clean and
- relevant information for each dataset. The resulting dataframes are
- saved as "intermediate" data in C:/Users/danic/MedClip/data/intermediate
- to facilitate merging.
-
- The format
+.. important::
+       
+       All these functiosn must run from the :file:`MedClip/src` directory.
 """
 #TODO
 # Fix the time estimates in the fix images function
@@ -27,22 +26,21 @@ from PIL import Image
 import datetime
 from tqdm import tqdm
 
-def assign_group(row, grouping):
-    """Given a dictionary of groupings, return the corresponding group.
+# def assign_group(row, grouping):
+#     """Given a dictionary of groupings, return the corresponding group.
     
-    This function is to be used within a call to an .apply() method for 
-    a pandas series. 
-    """
-    for group,values in grouping.items():
-        if row in values:
-            return group
+#     This function is to be used within a call to an .apply() method for 
+#     a pandas series. 
+#     """
+#     for group,values in grouping.items():
+#         if row in values:
+#             return group
 
 def chexpert():
-    '''
-    Generates a clean dataframe from chexpert raw data stored in the raw/data
+    """Generates a clean dataframe from chexpert raw data stored in the raw/data
     directory.
 
-    '''
+    """
     # Define paths for reading data
     chexpert_raw_path = '../data/raw/chexpert'
     path_train = chexpert_raw_path + '/CheXpert-v1.0-small/train.csv'
@@ -223,17 +221,33 @@ def chexpert():
 
 
 def medpix():
-    """
-    Load medclip dataset and generates a clean version of it.
-
-    Original notebook:
-        https://colab.research.google.com/drive/120gockcbGUvgcg43D3XJ2HRY10hkuer0?usp=sharing
-
-
-
-
-    Returns:
-        None.
+    """Load the raw medclip dataset and generate its intermediate version. 
+    
+    The cleaning tasks that this function carries out are:
+    
+    1. Consolidating the values in the "Plane" column of the raw dataset so that 
+       different names for the same plane would be considered only under one 
+       name. 
+    2. Discard rows that had less than 100 cases for their "Plane". 
+    3. Consolidating synonims in the "Core_Modality" column. 
+    4. Discard rows with modalities that had less than 100 cases. 
+    5. Dropping rows with 'NOS' (not specified) values. 
+    6. Discarding rows with captions larger than 100 words.
+    7. Consolidating synonims in the "Anatomy" column
+    8. Discard rows whose anatomy was represente less than 200 times in the 
+       dataset. 
+    9. Creating a Path column with image paths relative to the 
+       :file:`MedClip/src` folder. 
+    10. Creating the "Full_Caption" column with the captions to predict. These
+        have "<start> and "<end>" tokens. 
+    11. Adding a "Split" column which indicates wether the row belongs to "train",
+        "validation" or "test" sets. The validation test splits contain
+        5 cases of every modality each. 
+    12. Eliminating rows pointing to damaged image files. 
+    
+    The clean version of the dataset is saved in :file:`MedClip/data/raw`. 
+    
+    
 
     """
     # Configure where to save the resulting dataset
@@ -249,7 +263,7 @@ def medpix():
     # useful_cols=['ID','Plane',
     #              'Core_Modality','Full_Modality',
     #              'Findings','Case_Diagnosis','Location']
-    useful_cols=['ID','Plane',
+    useful_cols=['Case_URL','ID','Plane',
                  'Core_Modality','Full_Modality',
                  'Caption','Case_Diagnosis','Location']
     
@@ -304,7 +318,7 @@ def medpix():
     # Drop whenever plane is equal to particular values.
     df = df.loc[~df.Core_Modality.isin(['NOS'])]
 
-    # CLEANING ON "FINDINGS" COLUMN------------------------------
+    # CLEANING ON "CAPTION" COLUMN------------------------------
     # Eliminate rows that have a "findings" wordcount larger than 100 words. 
     df["Number of Words"] = df["Caption"].apply(lambda n: len(n.split()))
     df=df.loc[df['Number of Words']<=100]
@@ -336,10 +350,10 @@ def medpix():
     valid_index=df.Anatomy.value_counts().index[df.Anatomy.value_counts()>200]
     df=df.loc[df.Anatomy.isin(valid_index)]
 
-    # CLEANING THE IMPRESSIONS COLUMN---------------------
-    # Keep impressions with at most 30 words.
-    df["Number of Words"] = df["Impression"].apply(lambda n: len(n.split()))
-    df=df.loc[df['Number of Words']<=30]
+    # # CLEANING THE IMPRESSIONS COLUMN---------------------
+    # # Keep impressions with at most 30 words.
+    # df["Number of Words"] = df["Impression"].apply(lambda n: len(n.split()))
+    # df=df.loc[df['Number of Words']<=30]
 
     # Eliminate the Number of words column
     df.drop(columns='Number of Words').count()
@@ -359,7 +373,64 @@ def medpix():
                                              #' Impression: '+ str(row['Impression'])+
                                              ' <end>') ,axis=1)
 
-    # CHECK THAT WE ARE ABLE TO OPEN IMAGES POINTED BY THE PATH COLUMN------------------
+#      # SPLIT DATA IN TRAIN, VALIDATION AND TEST----------------------------------
+#     cases=list(df.Case_URL.unique()) # Make a list of medical cases
+#     # Shuffle the list
+#     random.seed(1)
+#     random.shuffle(cases)
+
+#     # Build the test and validation set with 10% of cases
+#     cases=list(df.Case_URL.unique()) # Make a list of medical cases
+#     # Shuffle the list
+#     random.seed(1)
+#     random.shuffle(cases)
+
+#     # Build the test and validation set with 10% of cases
+#     test_idx=int(len(cases)*0.05)
+#     val_idx=test_idx+int(len(cases)*0.05)
+
+#     test_cases = cases[0:test_idx] # list of test cases
+#     val_cases = cases[test_idx:val_idx] # list of validation cases
+#     train_cases = cases[val_idx:] # list of training cases
+
+#     df.loc[df.Case_URL.isin(test_cases),'Split']='test'
+#     df.loc[df.Case_URL.isin(val_cases),'Split']='validation'
+#     df.loc[df.Case_URL.isin(train_cases),'Split']='train'
+
+    # SPLIT DATA IN STRATIFIED TRAIN, VALIDATION AND TEST --------------------------
+    # Choose stratified test set
+    test_cases=[]
+    for modality in df.Core_Modality.unique():
+    # For every modality in the dataframe
+        sub_df=df.loc[df.Core_Modality==modality] # Get a df with this modality
+         # Get a list of unique cases with this modality. 
+        available_cases=list(sub_df.Case_URL.unique())
+        chosen_cases= random.sample(available_cases,5) # Choose 5 cases at random.
+        test_cases+=chosen_cases # Append chosen cases to test_cases. 
+
+    # Add test label to all rows corresponding to the chosen test cases. 
+    df.loc[df.Case_URL.isin(test_cases),'Split']='test'
+
+    # Choose stratified validation set from remianing data. 
+    val_cases=[]
+    for modality in df.Core_Modality.unique():
+    # For every modality in the dataframe. 
+        # Make a subdataframe with rows corresponding to this modality and e
+        # excluding rows already labeled as 'test'
+        sub_df=df.loc[(df.Core_Modality==modality)
+                      & (df['Split']!='test')]
+        available_cases=list(sub_df.Case_URL.unique())
+        chosen_cases= random.sample(available_cases,5)
+        val_cases+=chosen_cases
+
+    # Select the validation df and exclude the validation cases from the rest of 
+    # the data. 
+    df.loc[df.Case_URL.isin(val_cases),'Split']='validation'
+    # Label rows that are not 'test' or 'validation' as 'train'
+    df.loc[~df.Split.isin(['test','validation']),'Split']='train'
+
+    
+    # CHECK THAT WE ARE ABLE TO OPEN IMAGES POINTED BY THE PATH COLUMN----------
     bad_images=check_images(df.Path.to_list())
     print('listing bad images')
     print(bad_images)
@@ -379,7 +450,7 @@ def check_images(path_list):
         path (list of str): list containing the paths to images.
 
     Returns:
-        bad_images (list of str): list of paths pointing to corrupted images.
+        list of str: list of paths pointing to corrupted images.
 
     """
 
@@ -413,10 +484,12 @@ def check_images(path_list):
 
 def mimic():
     """Obtain clean dataframe for mimic dataset.
+    
     """
     def process_mimic(row): 
         """Process a row in the cxr-record-list.csv dataframe to 
         include caption and complete path to jpg image. 
+        
         """
         try:
         #Do all of the following inside try to avoid lengthy stops
@@ -426,7 +499,7 @@ def mimic():
 
             # Obtain the report ---------------------------
             text_path=text_path_prefix+text_path_suffix
-            text_file = open(text_path, "r") # Read report into string
+            text_file = open(text_path, "r") # Open text file
             report = text_file.read()  #read whole file to a string
             text_file.close() #close file
             row['Full_Caption']='<start> '+ report+' <end>' # Add report to row
@@ -443,12 +516,12 @@ def mimic():
     
     images_df_path="../data/raw/physionet.org/files/mimic-cxr/2.0.0/cxr-record-list.csv"
     texts_df_path="../data/raw/physionet.org/files/mimic-cxr/2.0.0/cxr-study-list.csv"
-    labels_df_path="../data/raw/physionet.org/files/mimic-cxr-jpg/2.0.0/mimic-cxr-2.0.0-chexpert.csv"
+    # labels_df_path="../data/raw/physionet.org/files/mimic-cxr-jpg/2.0.0/mimic-cxr-2.0.0-chexpert.csv"
 
 
     images_df=pd.read_csv(images_df_path)
     texts_df=pd.read_csv(texts_df_path)
-    labels_df=pd.read_csv(labels_df_path)
+    # labels_df=pd.read_csv(labels_df_path)
     tqdm.pandas()
     df=images_df.progress_apply(process_mimic,axis=1)
     df.to_csv('../data/intermediate/mimic.csv')
